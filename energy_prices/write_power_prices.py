@@ -1,8 +1,8 @@
+# filepath: /Users/Andre/vscode-projects/BI-Steel-Project/api_call_power_prices_germany.py
 import requests
 import pandas as pd
-import matplotlib.pyplot as plt
-from datetime import datetime
 import mysql.connector
+from datetime import datetime
 
 def fetch_energy_data():
     url = "https://apis.smartenergy.at/market/v1/price"
@@ -18,9 +18,11 @@ def save_to_dataframe(data):
         records = data['data']
         df = pd.DataFrame(records)
         df.rename(columns={'date': 'zeit', 'value': 'preis'}, inplace=True)
-    
+        
+        # Konvertiere die Zeitspalte in ein datetime-Format
         df['zeit'] = pd.to_datetime(df['zeit'])
         
+        # Gruppiere nach Stunde und berechne den Durchschnittspreis pro Stunde
         df_hourly = df.resample('H', on='zeit').mean().reset_index()
         df_hourly.rename(columns={'preis': 'preis_pro_stunde'}, inplace=True)
         
@@ -28,7 +30,7 @@ def save_to_dataframe(data):
     else:
         print("Keine Daten zum Speichern.")
         return None
-    
+
 def save_to_db(df):
     try:
         connection = mysql.connector.connect(
@@ -42,7 +44,7 @@ def save_to_db(df):
         if connection.is_connected():
             cursor = connection.cursor()
             insert_query = """
-                INSERT INTO Energiepreise (Zeit, Strompreis)
+                INSERT INTO Energiepreise (Zeit, Energiepreis)
                 VALUES (%s, %s)
             """
             for _, row in df.iterrows():
@@ -55,17 +57,6 @@ def save_to_db(df):
     except mysql.connector.Error as err:
         print(f"Fehler: {err}")
 
-def plot_energy_prices(df):
-    plt.figure(figsize=(10, 5))
-    plt.plot(df['zeit'], df['preis_pro_stunde'], marker='o', linestyle='-')
-    plt.xlabel('Zeit')
-    plt.ylabel('Preis pro Stunde (ct/kWh)')
-    plt.title('Strompreis pro Stunde')
-    plt.grid(True)
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.show()
-
 if __name__ == "__main__":
     data = fetch_energy_data()
     if data:
@@ -73,4 +64,3 @@ if __name__ == "__main__":
         if df is not None:
             print(df)
             save_to_db(df)
-            #plot_energy_prices(df)
