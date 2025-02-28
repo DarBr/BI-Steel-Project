@@ -24,7 +24,7 @@ def connect_to_db():
                 VALUES (%s, %s)
             """
             # Beispielwerte
-            data = (123, 'K98765')
+            data = (123, 300)
             
             # Abfrage ausführen und Änderungen speichern
             cursor.execute(insert_query, data)
@@ -44,6 +44,32 @@ def connect_to_db():
     
     except mysql.connector.Error as err:
         print(f"Fehler: {err}")
+        
+def insert_kunde(name, plz, ort, telefon, email):
+    try:
+        connection = mysql.connector.connect(
+            host="3.142.199.164",
+            port=3306,
+            user="user",
+            password="clientserver",
+            database="database-steel"
+        )
+        
+        if connection.is_connected():
+            cursor = connection.cursor()
+            insert_query = """
+                INSERT INTO K_Kunde (Name, PLZ, Ort, Telefon, Email)
+                VALUES (%s, %s, %s, %s, %s)
+            """
+            data = (name, plz, ort, telefon, email)
+            cursor.execute(insert_query, data)
+            connection.commit()
+            print("Kunde erfolgreich eingefügt.")
+            cursor.close()
+            connection.close()
+    
+    except mysql.connector.Error as err:
+        print(f"Fehler: {err}")
 
 if __name__ == "__main__":
-    connect_to_db()
+    insert_kunde("Max Mustermann", "12345", "Musterstadt", "0123456789", "lienig@mail.com")
