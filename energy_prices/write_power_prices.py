@@ -1,4 +1,3 @@
-# filepath: /Users/Andre/vscode-projects/BI-Steel-Project/api_call_power_prices_germany.py
 import requests
 import pandas as pd
 import mysql.connector
@@ -18,8 +17,6 @@ def save_to_dataframe(data):
         records = data['data']
         df = pd.DataFrame(records)
         df.rename(columns={'date': 'zeit', 'value': 'preis'}, inplace=True)
-        
-        # Konvertiere die Zeitspalte in ein datetime-Format
         df['zeit'] = pd.to_datetime(df['zeit'])
         
         # Gruppiere nach Stunde und berechne den Durchschnittspreis pro Stunde
@@ -46,11 +43,12 @@ def save_to_db(df):
             insert_query = """
                 INSERT INTO Energiepreise (Zeit, Energiepreis)
                 VALUES (%s, %s)
+                ON DUPLICATE KEY UPDATE Energiepreis = VALUES(Energiepreis);
             """
             for _, row in df.iterrows():
                 cursor.execute(insert_query, (row['zeit'], row['preis_pro_stunde']))
             connection.commit()
-            print("Daten erfolgreich gespeichert.")
+            print("Daten erfolgreich gespeichert oder aktualisiert.")
             cursor.close()
             connection.close()
     
