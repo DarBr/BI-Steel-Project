@@ -1,6 +1,7 @@
 import requests
 import pandas as pd
 import mysql.connector
+import matplotlib.pyplot as plt
 from datetime import datetime
 
 def fetch_energy_data():
@@ -55,6 +56,38 @@ def save_to_db(df):
     except mysql.connector.Error as err:
         print(f"Fehler: {err}")
 
+def read_from_db():
+    try:
+        connection = mysql.connector.connect(
+            host="3.142.199.164",
+            port=3306,
+            user="user",
+            password="clientserver",
+            database="database-dwh"
+        )
+        
+        if connection.is_connected():
+            query = "SELECT Zeit, Energiepreis FROM Energiepreise ORDER BY Zeit ASC;"
+            df = pd.read_sql(query, con=connection)
+            connection.close()
+            return df
+    except mysql.connector.Error as err:
+        print(f"Fehler: {err}")
+        return None
+
+def plot_energy_prices(df):
+    if df is not None and not df.empty:
+        plt.figure(figsize=(10, 5))
+        plt.plot(df['Zeit'], df['Energiepreis'], marker='o', linestyle='-', color='b')
+        plt.xlabel('Zeit')
+        plt.ylabel('Energiepreis')
+        plt.title('Energiepreise über die Zeit')
+        plt.xticks(rotation=45)
+        plt.grid()
+        plt.show()
+    else:
+        print("Keine Daten zum Plotten verfügbar.")
+
 if __name__ == "__main__":
     data = fetch_energy_data()
     if data:
@@ -62,3 +95,6 @@ if __name__ == "__main__":
         if df is not None:
             print(df)
             save_to_db(df)
+    
+    #df_db = read_from_db()
+    #plot_energy_prices(df_db)
