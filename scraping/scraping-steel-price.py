@@ -4,6 +4,7 @@ import json
 import mysql.connector
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone
+import time
 
 def fetch_hrc_price():
     url = 'https://tradingeconomics.com/commodity/hrc-steel'
@@ -90,6 +91,9 @@ def save_to_db(price):
 
 
 if __name__ == "__main__":
-    price = fetch_hrc_price()
-    if price is not None:
-        save_to_db(price)
+    while True:
+        price = fetch_hrc_price()
+        if price is not None:
+            save_to_db(price)
+        print("Warte 60 Sekunden...")
+        time.sleep(60)  # Wartet 60 Sekunden, bevor die nächste Abfrage startet
