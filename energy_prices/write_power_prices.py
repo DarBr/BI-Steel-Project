@@ -3,6 +3,7 @@ import pandas as pd
 import mysql.connector
 import matplotlib.pyplot as plt
 from datetime import datetime
+from sqlalchemy import create_engine
 
 def fetch_energy_data():
     url = "https://apis.smartenergy.at/market/v1/price"
@@ -21,7 +22,7 @@ def save_to_dataframe(data):
         df['zeit'] = pd.to_datetime(df['zeit'])
         
         # Gruppiere nach Stunde und berechne den Durchschnittspreis pro Stunde
-        df_hourly = df.resample('H', on='zeit').mean().reset_index()
+        df_hourly = df.resample('h', on='zeit').mean().reset_index()
         df_hourly.rename(columns={'preis': 'preis_pro_stunde'}, inplace=True)
         
         return df_hourly
@@ -56,24 +57,22 @@ def save_to_db(df):
     except mysql.connector.Error as err:
         print(f"Fehler: {err}")
 
+
 def read_from_db():
     try:
-        connection = mysql.connector.connect(
-            host="3.142.199.164",
-            port=3306,
-            user="user",
-            password="clientserver",
-            database="database-dwh"
-        )
+        # SQLAlchemy-Engine erstellen
+        db_uri = "mysql+mysqlconnector://user:clientserver@3.142.199.164:3306/database-dwh"
+        engine = create_engine(db_uri)
+
+        query = "SELECT Zeit, Energiepreis FROM Energiepreise ORDER BY Zeit ASC;"
+        df = pd.read_sql(query, con=engine)  # SQLAlchemy wird jetzt genutzt!
         
-        if connection.is_connected():
-            query = "SELECT Zeit, Energiepreis FROM Energiepreise ORDER BY Zeit ASC;"
-            df = pd.read_sql(query, con=connection)
-            connection.close()
-            return df
-    except mysql.connector.Error as err:
+        return df
+
+    except Exception as err:
         print(f"Fehler: {err}")
         return None
+
 
 def plot_energy_prices(df):
     if df is not None and not df.empty:
@@ -96,5 +95,5 @@ if __name__ == "__main__":
             print(df)
             save_to_db(df)
     
-    #df_db = read_from_db()
-    #plot_energy_prices(df_db)
+    df_db = read_from_db()
+    plot_energy_prices(df_db)

@@ -183,33 +183,47 @@ def save_to_db(news):
             password="clientserver",
             database="database-dwh"
         )
-        
+
         if connection.is_connected():
             cursor = connection.cursor()
 
+            # Prüfen, ob die News bereits existiert
+            check_query = "SELECT COUNT(*) FROM News WHERE link = %s"
+            cursor.execute(check_query, (news['link'],))
+            result = cursor.fetchone()
 
+            if result[0] > 0:
+                print(f"News '{news['title']}' existiert bereits und wird nicht erneut gespeichert.")
+                return  # Falls sie existiert, brich die Speicherung ab
+
+            # Datum konvertieren
             date_en = convert_german_date(news['date'])
-            date_withPlace = re.search(r'(\d{1,2}\.\s+[A-Za-zäöüÄÖÜ]+\s+\d{4})', date_en)
-            date_withoutPlace = re.search(r'(\d{1,2}\.\s+[A-Za-zäöüÄÖÜ]+\s+\d{4})', date_en)
-            if date_withPlace:
-                cleaned_date = date_withPlace.group(1)
+            date_match = re.search(r'(\d{1,2}\.\s+[A-Za-zäöüÄÖÜ]+\s+\d{4})', date_en)
+
+            if date_match:
+                cleaned_date = date_match.group(1)
                 formatted_date = datetime.strptime(cleaned_date, '%d. %B %Y').strftime('%Y-%m-%d %H:%M:%S')
-            elif date_withoutPlace:
-                formatted_date = datetime.strptime(date_en, '%d. %B %Y').strftime('%Y-%m-%d %H:%M:%S')
             else:
                 formatted_date = None  # Falls das Datum nicht erkannt wird
 
+            # News in die Datenbank einfügen
             insert_query = """
                 INSERT INTO News (date, titel, summary, link, category)
                 VALUES (%s, %s, %s, %s, %s)
             """
             cursor.execute(insert_query, (formatted_date, news['title'], news['summary'], news['link'], news['category']))
             connection.commit()
+            print(f"News '{news['title']}' erfolgreich gespeichert.")
+
     except mysql.connector.Error as err:
         print(f"Fehler: {err}")
+
     finally:
-        cursor.close()
-        connection.close()
+        if 'cursor' in locals():
+            cursor.close()
+        if 'connection' in locals():
+            connection.close()
+
 
 
 if __name__ == "__main__":
