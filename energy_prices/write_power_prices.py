@@ -30,6 +30,26 @@ def save_to_dataframe(data):
         print("Keine Daten zum Speichern.")
         return None
 
+def save_time_to_db(cursor, timestamp):
+    """Fügt die Zeitdaten in die Zeittabelle ein, falls diese noch nicht existiert."""
+    ZeitID = timestamp.strftime('%Y-%m-%d:%H') + "-00"
+    datum = timestamp.date()
+    uhrzeit = timestamp.time()
+    jahr = timestamp.year
+    monat = timestamp.month
+    quartal = (monat - 1) // 3 + 1
+    wochentag = timestamp.strftime('%A')
+
+    # Prüfen, ob ZeitID bereits existiert
+    cursor.execute("SELECT COUNT(*) FROM Zeit WHERE ZeitID = %s", (ZeitID,))
+    if cursor.fetchone()[0] == 0:
+        # ZeitID in die Zeittabelle einfügen
+        insert_query = """
+            INSERT INTO Zeit (ZeitID, Datum, Uhrzeit, Jahr, Monat, Q, Wochentag)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
+        cursor.execute(insert_query, (ZeitID, datum, uhrzeit, jahr, monat, quartal, wochentag))
+
 def save_to_db(df):
     try:
         connection = mysql.connector.connect(
@@ -43,12 +63,15 @@ def save_to_db(df):
         if connection.is_connected():
             cursor = connection.cursor()
             insert_query = """
-                INSERT INTO Energiepreise (Zeit, Energiepreis)
+                INSERT INTO Energiepreise (Energiepreis, ZeitID)
                 VALUES (%s, %s)
                 ON DUPLICATE KEY UPDATE Energiepreis = VALUES(Energiepreis);
             """
             for _, row in df.iterrows():
-                cursor.execute(insert_query, (row['zeit'], row['preis_pro_stunde']))
+                timestamp = row['zeit']
+                ZeitID = timestamp.strftime('%Y-%m-%d:%H') + "-00"  # ZeitID mit voller Stunde erstellen
+                save_time_to_db(cursor, timestamp)  # ZeitID in Zeittabelle speichern
+                cursor.execute(insert_query, (row['preis_pro_stunde'], ZeitID))
             connection.commit()
             print("Daten erfolgreich gespeichert oder aktualisiert.")
             cursor.close()
@@ -56,7 +79,6 @@ def save_to_db(df):
     
     except mysql.connector.Error as err:
         print(f"Fehler: {err}")
-
 
 def read_from_db():
     try:
@@ -72,7 +94,6 @@ def read_from_db():
     except Exception as err:
         print(f"Fehler: {err}")
         return None
-
 
 def plot_energy_prices(df):
     if df is not None and not df.empty:
@@ -95,5 +116,5 @@ if __name__ == "__main__":
             print(df)
             save_to_db(df)
     
-    df_db = read_from_db()
-    plot_energy_prices(df_db)
+    #df_db = read_from_db()
+    #plot_energy_prices(df_db)

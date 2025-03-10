@@ -3,7 +3,7 @@ import re
 import json
 import mysql.connector
 from bs4 import BeautifulSoup
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import time
 
 def fetch_hrc_price():
@@ -49,29 +49,37 @@ def save_to_db(price):
         
         if connection.is_connected():
             cursor = connection.cursor()
-            zeit_id = int(datetime.now(timezone.utc).timestamp())
-            current_date = datetime.now(timezone.utc).date()
+
+            # Runde den aktuellen Zeitpunkt auf die volle Stunde
+            current_datetime = datetime.now(timezone.utc)
+            rounded_datetime = current_datetime.replace(minute=0, second=0, microsecond=0)
+
+            # Extrahiere die vollen Stunden (ZeitID)
+            zeit_id = rounded_datetime.strftime('%Y-%m-%d:%H') + "-00"  # ZeitID als vollen Zeitstempel (z. B. '2025-03-08:12-00')
+            current_date = rounded_datetime.date()
             jahr = current_date.year
             monat = current_date.month
             quartal = (monat - 1) // 3 + 1  # Berechnung des Quartals
             wochentag = current_date.strftime("%A")  # Wochentag (z. B. 'Montag')
             
-            # Check if ZeitID exists in Dim_Zeit table
-            check_zeit_query = "SELECT COUNT(*) FROM Dim_Zeit WHERE ZeitID = %s"
+            # Check if ZeitID exists in Zeit table
+            check_zeit_query = "SELECT COUNT(*) FROM Zeit WHERE ZeitID = %s"
             cursor.execute(check_zeit_query, (zeit_id,))
             result = cursor.fetchone()
             
             if result[0] == 0:
-                # Insert ZeitID into Dim_Zeit table if not found
+                # Insert ZeitID into Zeit table if not found
                 insert_zeit_query = """
-                INSERT INTO Dim_Zeit (ZeitID, Datum, Jahr, Quartal, Monat, Wochentag)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO Zeit (ZeitID, Datum, Uhrzeit, Jahr, Monat, Q, Wochentag)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
                 """
-                cursor.execute(insert_zeit_query, (zeit_id, current_date, jahr, quartal, monat, wochentag))
+                cursor.execute(insert_zeit_query, (zeit_id, current_date, rounded_datetime.time(), jahr, monat, quartal, wochentag))
                 connection.commit()
-                print("Neue ZeitID in Dim_Zeit eingefügt.")
+                print("Neue ZeitID in Zeit eingefügt.")
+            else:
+                print("ZeitID existiert bereits in Zeit.")
             
-            # Now insert the data into Dim_Marktpreise
+            # Jetzt die Daten in Dim_Marktpreise einfügen mit der ZeitID
             materialname = "HRC Stahl"
             einheit = "USD/T"
             insert_query = """
@@ -87,7 +95,6 @@ def save_to_db(price):
             connection.close()
     except mysql.connector.Error as err:
         print(f"Fehler: {err}")
-
 
 
 if __name__ == "__main__":
