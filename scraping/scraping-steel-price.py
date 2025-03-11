@@ -97,10 +97,19 @@ def save_to_db(price):
         print(f"Fehler: {err}")
 
 
+def wait_until_next_hour():
+    # Berechne die Zeit bis zur nächsten vollen Stunde
+    now = datetime.now(timezone.utc)
+    next_hour = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    wait_time = (next_hour - now).total_seconds()
+    
+    print(f"Warte bis zur nächsten vollen Stunde. (Wartezeit: {wait_time} Sekunden)")
+    time.sleep(wait_time)
+
+
 if __name__ == "__main__":
     while True:
+        wait_until_next_hour()  # Warte bis zur nächsten vollen Stunde
         price = fetch_hrc_price()
         if price is not None:
             save_to_db(price)
-        print("Warte 60 Sekunden...")
-        time.sleep(60)  # Wartet 60 Sekunden, bevor die nächste Abfrage startet

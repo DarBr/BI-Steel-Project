@@ -2,8 +2,9 @@ import requests
 import pandas as pd
 import mysql.connector
 import matplotlib.pyplot as plt
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy import create_engine
+import time
 
 def fetch_energy_data():
     url = "https://apis.smartenergy.at/market/v1/price"
@@ -108,13 +109,30 @@ def plot_energy_prices(df):
     else:
         print("Keine Daten zum Plotten verfügbar.")
 
-if __name__ == "__main__":
-    data = fetch_energy_data()
-    if data:
-        df = save_to_dataframe(data)
-        if df is not None:
-            print(df)
-            save_to_db(df)
+def wait_until_next_run():
+    """Wartet bis 18 Uhr des aktuellen Tages oder des nächsten Tages"""
+    now = datetime.now()
+    target_time = now.replace(hour=18, minute=0, second=0, microsecond=0)
     
-    #df_db = read_from_db()
-    #plot_energy_prices(df_db)
+    if now >= target_time:
+        # Wenn es bereits nach 18 Uhr ist, warte bis zum nächsten Tag
+        target_time += timedelta(days=1)
+    
+    # Berechne die verbleibende Zeit bis zur nächsten 18 Uhr
+    wait_time = (target_time - now).total_seconds()
+    
+    print(f"Warte bis 18 Uhr. (Wartezeit: {wait_time} Sekunden)")
+    time.sleep(wait_time)
+
+if __name__ == "__main__":
+    while True:
+        wait_until_next_run()  # Warte bis 18 Uhr
+        data = fetch_energy_data()
+        if data:
+            df = save_to_dataframe(data)
+            if df is not None:
+                print(df)
+                save_to_db(df)
+        # Option zum Plotten (kommentiere aus, wenn nicht benötigt)
+        #df_db = read_from_db()
+        #plot_energy_prices(df_db)
