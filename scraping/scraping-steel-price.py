@@ -40,7 +40,7 @@ def fetch_hrc_price():
 def save_to_db(price):
     try:
         connection = mysql.connector.connect(
-            host="3.142.199.164",
+            host="13.60.244.59",
             port=3306,
             user="user",
             password="clientserver",

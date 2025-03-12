@@ -96,27 +96,29 @@ def read_from_db():
         print(f"Fehler: {err}")
         return None
 
-def plot_energy_prices(df):
-    if df is not None and not df.empty:
-        plt.figure(figsize=(10, 5))
-        plt.plot(df['Zeit'], df['Energiepreis'], marker='o', linestyle='-', color='b')
-        plt.xlabel('Zeit')
-        plt.ylabel('Energiepreis')
-        plt.title('Energiepreise über die Zeit')
-        plt.xticks(rotation=45)
-        plt.grid()
-        plt.show()
-    else:
-        print("Keine Daten zum Plotten verfügbar.")
 
+
+def wait_until_next_run():
+    """Wartet bis 18 Uhr des aktuellen Tages oder des nächsten Tages"""
+    now = datetime.now()
+    target_time = now.replace(hour=18, minute=0, second=0, microsecond=0)
+    
+    if now >= target_time:
+        # Wenn es bereits nach 18 Uhr ist, warte bis zum nächsten Tag
+        target_time += timedelta(days=1)
+    
+    # Berechne die verbleibende Zeit bis zur nächsten 18 Uhr
+    wait_time = (target_time - now).total_seconds()
+    
+    print(f"Warte bis 18 Uhr. (Wartezeit: {wait_time} Sekunden)")
+    time.sleep(wait_time)
 
 if __name__ == "__main__":
-    data = fetch_energy_data()
-    if data:
-        df = save_to_dataframe(data)
-        if df is not None:
-            print(df)
-            save_to_db(df)
-
-    #df_db = read_from_db()
-    #plot_energy_prices(df_db)
+    while True:
+        wait_until_next_run()  # Warte bis 18 Uhr
+        data = fetch_energy_data()
+        if data:
+            df = save_to_dataframe(data)
+            if df is not None:
+                print(df)
+                save_to_db(df)
