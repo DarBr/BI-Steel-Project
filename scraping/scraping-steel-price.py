@@ -5,6 +5,7 @@ import mysql.connector
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone, timedelta
 import time
+import pytz  # Importiere pytz
 
 def fetch_hrc_price():
     url = 'https://tradingeconomics.com/commodity/hrc-steel'
@@ -50,8 +51,9 @@ def save_to_db(price):
         if connection.is_connected():
             cursor = connection.cursor()
 
-            # Runde den aktuellen Zeitpunkt auf die volle Stunde
-            current_datetime = datetime.now(timezone.utc)
+            # Holen der deutschen Zeitzone (Europe/Berlin)
+            berlin_tz = pytz.timezone('Europe/Berlin')
+            current_datetime = datetime.now(pytz.utc).astimezone(berlin_tz)  # UTC nach Berlin Zeit konvertieren
             rounded_datetime = current_datetime.replace(minute=0, second=0, microsecond=0)
 
             # Extrahiere die vollen Stunden (ZeitID)
@@ -99,7 +101,7 @@ def save_to_db(price):
 
 def wait_until_next_hour():
     # Berechne die Zeit bis zur nächsten vollen Stunde
-    now = datetime.now(timezone.utc)
+    now = datetime.now(pytz.utc).astimezone(pytz.timezone('Europe/Berlin'))  # UTC nach Berlin Zeit konvertieren
     next_hour = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
     wait_time = (next_hour - now).total_seconds()
     

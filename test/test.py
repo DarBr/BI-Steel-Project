@@ -4,7 +4,7 @@ import time
 
 # Verbindung zur Datenbank herstellen
 connection = mysql.connector.connect(
-    host="3.142.199.164",   # Deine Host-IP
+    host="13.60.244.59",   # Deine Host-IP
     port=3306,              # Standardport für MySQL
     user="user",            # Dein Benutzername
     password="clientserver",  # Dein Passwort
