@@ -2,9 +2,9 @@ import requests
 import re
 import json
 import mysql.connector
+import time
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone
-import locale
 
 # Monatsnamen für manuellen Fallback
 month_mapping = {
@@ -22,157 +22,36 @@ def convert_german_date(date_str):
             break
     return date_str
 
-def fetch_news_wvstahl_wirtschafthandelspolitik():
-    news_list_wvstahl_wirtschafthandelspolitik = []
-    # URL der Zielwebseite
-    url = 'https://www.wvstahl.de/wirtschafts-und-handelspolitik/'
+def fetch_news(url, category):
+    news_list = []
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
+        news_items = soup.select('ul.loop-block > li')
 
-    # HTTP-Anfrage an die Webseite senden
-    response = requests.get(url)
-    response.raise_for_status()  # Überprüfen, ob die Anfrage erfolgreich war
+        if not news_items:
+            print(f"Keine Nachrichten gefunden auf {url}")
+            return None
 
-    # Inhalt der Webseite parsen
-    soup = BeautifulSoup(response.text, 'html.parser')
-
-    # Nachrichtenbeiträge finden
-    news_items = soup.select('ul.loop-block > li')
-
-    if news_items:
-        # Informationen aus jedem Nachrichtenbeitrag extrahieren
         for item in news_items:
             title_tag = item.find('h2').find('a')
             title = title_tag.get_text(strip=True)
             link = title_tag['href']
             summary = item.find('p').get_text(strip=True)
-            
-            # Datum aus der Zusammenfassung extrahieren 
             date = summary.split('|')[0].strip()
-            
-            news_list_wvstahl_wirtschafthandelspolitik.append({
+
+            news_list.append({
                 'title': title,
                 'date': date,
                 'summary': summary,
                 'link': link,
-                'category': 'Wirtschafts- und Handelspolitik'
+                'category': category
             })
-        return news_list_wvstahl_wirtschafthandelspolitik
-    else:
+        return news_list
+    except Exception as e:
+        print(f"Fehler beim Abrufen von {url}: {e}")
         return None
-    
-
-def fetch_news_wvstahl_energieklimapolitik():
-    news_list_wvstahl_energieklimapolitik = []
-    # URL der Zielwebseite
-    url = 'https://www.wvstahl.de/energie-und-klimapolitik/'
-
-    # HTTP-Anfrage an die Webseite senden
-    response = requests.get(url)
-    response.raise_for_status()  # Überprüfen, ob die Anfrage erfolgreich war
-
-    # Inhalt der Webseite parsen
-    soup = BeautifulSoup(response.text, 'html.parser')
-
-    # Nachrichtenbeiträge finden
-    news_items = soup.select('ul.loop-block > li')
-
-    if news_items:
-        # Informationen aus jedem Nachrichtenbeitrag extrahieren
-        for item in news_items:
-            title_tag = item.find('h2').find('a')
-            title = title_tag.get_text(strip=True)
-            link = title_tag['href']
-            summary = item.find('p').get_text(strip=True)
-            
-            # Datum aus der Zusammenfassung extrahieren 
-            date = summary.split('|')[0].strip()
-            
-            news_list_wvstahl_energieklimapolitik.append({
-                'title': title,
-                'date': date,
-                'summary': summary,
-                'link': link,
-                'category': 'Energie- und Klimapolitik'
-            })
-        return news_list_wvstahl_energieklimapolitik
-    else:
-        return None
-    
-
-def fetch_news_wvstahl_umweltnachhaltigkeitspolitik():
-    news_list_wvstahl_umweltnachhaltigkeitspolitik = []
-    # URL der Zielwebseite
-    url = 'https://www.wvstahl.de/umwelt-und-nachhaltigkeitspolitik/'
-
-    # HTTP-Anfrage an die Webseite senden
-    response = requests.get(url)
-    response.raise_for_status()  # Überprüfen, ob die Anfrage erfolgreich war
-
-    # Inhalt der Webseite parsen
-    soup = BeautifulSoup(response.text, 'html.parser')
-
-    # Nachrichtenbeiträge finden
-    news_items = soup.select('ul.loop-block > li')
-
-    if news_items:
-        # Informationen aus jedem Nachrichtenbeitrag extrahieren
-        for item in news_items:
-            title_tag = item.find('h2').find('a')
-            title = title_tag.get_text(strip=True)
-            link = title_tag['href']
-            summary = item.find('p').get_text(strip=True)
-            
-            # Datum aus der Zusammenfassung extrahieren 
-            date = summary.split('|')[0].strip()
-            
-            news_list_wvstahl_umweltnachhaltigkeitspolitik.append({
-                'title': title,
-                'date': date,
-                'summary': summary,
-                'link': link,
-                'category': 'Umwelt- und Nachhaltigkeitspolitik'
-            })
-        return news_list_wvstahl_umweltnachhaltigkeitspolitik
-    else:
-        return None
-
-
-def fetch_news_wvstahl_verkehrinfrastrukturpolitik():
-    news_list_wvstahl_verkehrinfrastrukturpolitik = []
-    # URL der Zielwebseite
-    url = 'https://www.wvstahl.de/verkehrs-und-infrastrukturpolitik/'
-
-    # HTTP-Anfrage an die Webseite senden
-    response = requests.get(url)
-    response.raise_for_status()  # Überprüfen, ob die Anfrage erfolgreich war
-
-    # Inhalt der Webseite parsen
-    soup = BeautifulSoup(response.text, 'html.parser')
-
-    # Nachrichtenbeiträge finden
-    news_items = soup.select('ul.loop-block > li')
-
-    if news_items:
-        # Informationen aus jedem Nachrichtenbeitrag extrahieren
-        for item in news_items:
-            title_tag = item.find('h2').find('a')
-            title = title_tag.get_text(strip=True)
-            link = title_tag['href']
-            summary = item.find('p').get_text(strip=True)
-            
-            # Datum aus der Zusammenfassung extrahieren 
-            date = summary.split('|')[0].strip()
-            
-            news_list_wvstahl_verkehrinfrastrukturpolitik.append({
-                'title': title,
-                'date': date,
-                'summary': summary,
-                'link': link,
-                'category': 'Verkehrs- und Infrastrukturpolitik'
-            })
-        return news_list_wvstahl_verkehrinfrastrukturpolitik
-    else:
-        return None
-
 
 def save_to_db(news):
     try:
@@ -183,79 +62,59 @@ def save_to_db(news):
             password="clientserver",
             database="database-dwh"
         )
+        cursor = connection.cursor()
 
-        if connection.is_connected():
-            cursor = connection.cursor()
+        check_query = "SELECT COUNT(*) FROM News WHERE link = %s"
+        cursor.execute(check_query, (news['link'],))
+        result = cursor.fetchone()
 
-            # Prüfen, ob die News bereits existiert
-            check_query = "SELECT COUNT(*) FROM News WHERE link = %s"
-            cursor.execute(check_query, (news['link'],))
-            result = cursor.fetchone()
+        if result[0] > 0:
+            print(f"News '{news['title']}' existiert bereits.")
+            return
 
-            if result[0] > 0:
-                print(f"News '{news['title']}' existiert bereits und wird nicht erneut gespeichert.")
-                return  # Falls sie existiert, brich die Speicherung ab
+        date_en = convert_german_date(news['date'])
+        date_match = re.search(r'(\d{1,2}\.\s+[A-Za-zäöüÄÖÜ]+\s+\d{4})', date_en)
+        formatted_date = datetime.strptime(date_match.group(1), '%d. %B %Y').strftime('%Y-%m-%d %H:%M:%S') if date_match else None
 
-            # Datum konvertieren
-            date_en = convert_german_date(news['date'])
-            date_match = re.search(r'(\d{1,2}\.\s+[A-Za-zäöüÄÖÜ]+\s+\d{4})', date_en)
-
-            if date_match:
-                cleaned_date = date_match.group(1)
-                formatted_date = datetime.strptime(cleaned_date, '%d. %B %Y').strftime('%Y-%m-%d %H:%M:%S')
-            else:
-                formatted_date = None  # Falls das Datum nicht erkannt wird
-
-            # News in die Datenbank einfügen
-            insert_query = """
-                INSERT INTO News (date, titel, summary, link, category)
-                VALUES (%s, %s, %s, %s, %s)
-            """
-            cursor.execute(insert_query, (formatted_date, news['title'], news['summary'], news['link'], news['category']))
-            connection.commit()
-            print(f"News '{news['title']}' erfolgreich gespeichert.")
-
+        insert_query = """
+            INSERT INTO News (date, titel, summary, link, category)
+            VALUES (%s, %s, %s, %s, %s)
+        """
+        cursor.execute(insert_query, (formatted_date, news['title'], news['summary'], news['link'], news['category']))
+        connection.commit()
+        print(f"News '{news['title']}' gespeichert.")
     except mysql.connector.Error as err:
-        print(f"Fehler: {err}")
-
+        print(f"Datenbankfehler: {err}")
     finally:
         if 'cursor' in locals():
             cursor.close()
         if 'connection' in locals():
             connection.close()
 
-
-
-if __name__ == "__main__":
-    # Liste zum Speichern der extrahierten Nachrichten
+def main():
+    urls = [
+        ("https://www.wvstahl.de/wirtschafts-und-handelspolitik/", "Wirtschafts- und Handelspolitik"),
+        ("https://www.wvstahl.de/energie-und-klimapolitik/", "Energie- und Klimapolitik"),
+        ("https://www.wvstahl.de/umwelt-und-nachhaltigkeitspolitik/", "Umwelt- und Nachhaltigkeitspolitik"),
+        ("https://www.wvstahl.de/verkehrs-und-infrastrukturpolitik/", "Verkehrs- und Infrastrukturpolitik")
+    ]
     news_list = []
 
-    #Wirschafst- und Handelspolitik
-    if fetch_news_wvstahl_wirtschafthandelspolitik() is None:
-        print("Fehler beim Abrufen der Wirtschafts- und Handelspolitik von wvstahl.de")
-    else:    
-        news_list.extend(fetch_news_wvstahl_wirtschafthandelspolitik())
+    for url, category in urls:
+        news = fetch_news(url, category)
+        if news:
+            news_list.extend(news)
 
-    #Energie- und Klimapolitik
-    if fetch_news_wvstahl_energieklimapolitik() is None:
-        print("Fehler beim Abrufen der Energie- und Klimapolitik von wvstahl.de")
-    else:
-        news_list.extend(fetch_news_wvstahl_energieklimapolitik())
-
-    #Umwelt- und Nachhaltigkeitspolitik
-    if fetch_news_wvstahl_umweltnachhaltigkeitspolitik() is None:
-        print("Fehler beim Abrufen der Umwelt- und Nachhaltigkeitspolitik von wvstahl.de")
-    else:
-        news_list.extend(fetch_news_wvstahl_umweltnachhaltigkeitspolitik())
-    
-    #Verkehrs- und Infrastrukturpolitik
-    if fetch_news_wvstahl_verkehrinfrastrukturpolitik() is None:
-        print("Fehler beim Abrufen der Verkehrs- und Infrastrukturpolitik von wvstahl.de")
-    else:
-        news_list.extend(fetch_news_wvstahl_verkehrinfrastrukturpolitik())
-    
     if news_list:
         for news in news_list:
             save_to_db(news)
-        print("Alle Nachrichten wurden erfolgreich abgerufen und in die Datenbank gespeichert.")
+        print("Alle Nachrichten wurden gespeichert.")
+    else:
+        print("Keine neuen Nachrichten zum Speichern.")
 
+if __name__ == "__main__":
+    while True:
+        print("Starte den täglichen News-Scraper...")
+        main()
+        print("Warte 24 Stunden bis zum nächsten Durchlauf...")
+        time.sleep(86400)
