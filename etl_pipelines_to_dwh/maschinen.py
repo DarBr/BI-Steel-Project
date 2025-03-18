@@ -7,9 +7,9 @@ PORT = 3306
 USER = "user"
 PASSWORD = "clientserver"
 
-def fetch_customer_data():
+def fetch_machine_data():
     """
-    Extrahiert alle relevanten Kundendaten aus der Quell-Datenbank (database-steel).
+    Extrahiert alle relevanten Maschinendaten aus der Quell-Datenbank (database-steel).
     """
     try:
         # Verbindung zur Quell-Datenbank herstellen
@@ -23,8 +23,8 @@ def fetch_customer_data():
         source_cursor = source_conn.cursor(dictionary=True)
         
         query = """
-            SELECT KundenID, Firma, Straße, PLZ, Stadt, Land
-            FROM tb_Kunde;
+            SELECT MaschinenID, Typ, Wartungsstatus, Verbrauch, Produktionskapazität
+            FROM tb_Maschine;
         """
         source_cursor.execute(query)
         result = source_cursor.fetchall()
@@ -39,10 +39,10 @@ def fetch_customer_data():
         print(f"Fehler beim Abrufen der Daten aus der Quelle: {err}")
         return None
 
-def load_customer_data(df):
+def load_machine_data(df):
     """
-    Lädt die Kundendaten in die Ziel-Datenbank (database-dwh) in die Tabelle Dim_Kunde.
-    Hier wird ein Full Load durchgeführt (Tabelle wird vor dem Laden geleert).
+    Lädt die Maschinendaten in die Ziel-Datenbank (database-dwh) in die Tabelle Dim_Maschine.
+    Wenn die MaschinenID bereits existiert, werden die Daten aktualisiert.
     """
     try:
         # Verbindung zur Ziel-Datenbank herstellen
@@ -55,21 +55,24 @@ def load_customer_data(df):
         )
         dest_cursor = dest_conn.cursor()
 
-        # Option 1: Full Load – bestehende Daten in Dim_Kunde löschen
-        dest_cursor.execute("TRUNCATE TABLE Dim_Kunde;")
-        
         insert_query = """
-            INSERT INTO Dim_Kunde (KundenID, Firma, Straße, PLZ, Stadt, Land)
-            VALUES (%s, %s, %s, %s, %s, %s);
+            INSERT INTO Dim_Maschine (MaschinenID, Typ, Standort, Wartungsstatus, Energieverbrauch)
+            VALUES (%s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                Typ = VALUES(Typ),
+                Standort = VALUES(Standort),
+                Wartungsstatus = VALUES(Wartungsstatus),
+                Energieverbrauch = VALUES(Energieverbrauch);
         """
+        
+        # Hier musst du den Standort festlegen. Zum Beispiel: 'Unbekannt'
         for _, row in df.iterrows():
             data_tuple = (
-                row['KundenID'],
-                row['Firma'],
-                row['Straße'],
-                row['PLZ'],
-                row['Stadt'],
-                row['Land']
+                row['MaschinenID'],
+                row['Typ'],
+                "Unbekannt",  # Hier kannst du den Standort nach Bedarf anpassen
+                row['Wartungsstatus'],
+                row['Verbrauch']  # 'Energieverbrauch' anstatt 'Verbrauch' in Dim_Maschine
             )
             dest_cursor.execute(insert_query, data_tuple)
         
@@ -83,12 +86,12 @@ def load_customer_data(df):
         print(f"Fehler beim Laden der Daten in das DWH: {err}")
 
 if __name__ == "__main__":
-    # Extraktion der Kundendaten aus der Quell-Datenbank
-    df_customers = fetch_customer_data()
-    if df_customers is not None and not df_customers.empty:
+    # Extraktion der Maschinendaten aus der Quell-Datenbank
+    df_machines = fetch_machine_data()
+    if df_machines is not None and not df_machines.empty:
         print("Daten aus der Quell-Datenbank:")
-        print(df_customers)
+        print(df_machines)
         # Laden der Daten in das DWH
-        load_customer_data(df_customers)
+        load_machine_data(df_machines)
     else:
         print("Keine Daten zum Laden gefunden.")
