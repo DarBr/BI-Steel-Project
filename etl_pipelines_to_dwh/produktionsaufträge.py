@@ -1,5 +1,6 @@
 import mysql.connector
 import pandas as pd
+import matplotlib.pyplot as plt
 
 # Verbindungseinstellungen (anpassen!)
 HOST = "13.60.244.59"
@@ -101,11 +102,42 @@ def load_production_data(df):
     
     except mysql.connector.Error as err:
         print(f"Fehler beim Laden der Daten in das DWH: {err}")
+        
+def plot_machine_utilization(df):
+    """
+    Plottet die Auslastung jeder Maschine an einem bestimmten Tag.
+    """
+    # Extrahiere die Stunde von der Startzeit und gruppiere nach MaschinenID
+    df['Stunde'] = df['Startzeit'].apply(lambda x: x.hour)
+    df_grouped = df.groupby(['MaschinenID', 'Stunde']).agg({'Auslastung': 'mean'}).reset_index()
+
+    # Erstelle das Diagramm
+    plt.figure(figsize=(10, 6))
+    for machine_id in df_grouped['MaschinenID'].unique():
+        machine_data = df_grouped[df_grouped['MaschinenID'] == machine_id]
+        plt.plot(machine_data['Stunde'], machine_data['Auslastung'], label=f'Maschine {machine_id}')
+
+    plt.title('Auslastung der Maschinen am 2025-01-01')
+    plt.xlabel('Stunden des Tages')
+    plt.ylabel('Auslastung')
+    plt.legend(title="Maschinen")
+    plt.grid(True)
+    plt.xticks(range(0, 24, 1))
+    plt.tight_layout()
+
+    # Zeige das Diagramm
+    plt.show()
+    
+    
+
 
 if __name__ == "__main__":
     # Extraktion der Produktionsdaten aus der Quell-Datenbank
     df_production = fetch_production_data()
     if df_production is not None and not df_production.empty:
+        # Visualisierung der Auslastung der Maschinen
+        # plot_machine_utilization(df_production)
+        
         print("Daten aus der Quell-Datenbank:")
         print(df_production)
         # Laden der Daten in das DWH
