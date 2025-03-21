@@ -56,11 +56,17 @@ def load_production_data(df):
         )
         dest_cursor = dest_conn.cursor()
 
-        # Abfrage zum Abrufen der ZeitID basierend auf der Startzeit
-        query_time_id = """
+        # Abfrage zum Prüfen, ob die ZeitID bereits existiert
+        query_check_time_id = """
             SELECT ZeitID 
             FROM Zeit
-            WHERE Datum = %s AND Uhrzeit = %s;
+            WHERE ZeitID = %s;
+        """
+
+        # Abfrage zum Einfügen einer neuen ZeitID in die Zeit-Tabelle
+        query_insert_time = """
+            INSERT INTO Zeit (ZeitID, Datum, Uhrzeit, Jahr, Monat, Q, Wochentag)
+            VALUES (%s, %s, %s, %s, %s, %s, %s);
         """
         
         # Einfügen der Produktionsdaten in die Fakt_Produktionsauftrag Tabelle
@@ -72,28 +78,40 @@ def load_production_data(df):
         for _, row in df.iterrows():
             # Extrahiere Datum und Uhrzeit von der Startzeit
             start_time = row['Startzeit']
-            date_part = start_time.date()
-            time_part = start_time.strftime('%H:%M:%S')
+            date_part = start_time.date()  # Extrahiere das Datum
+            time_part = start_time.strftime('%H:%M:%S')  # Extrahiere die Uhrzeit im Format 'HH:MM:SS'
             
-            # Holen der ZeitID aus der Zeit-Tabelle
-            dest_cursor.execute(query_time_id, (date_part, time_part))
+            # Erstelle die ZeitID (Format: 'YYYY-MM-DD:HH-MM')
+            time_id = f"{date_part}:{time_part[:2]}-{time_part[3:5]}"
+
+            # Prüfe, ob die ZeitID bereits existiert
+            dest_cursor.execute(query_check_time_id, (time_id,))
             time_id_result = dest_cursor.fetchone()
+
+            if not time_id_result:
+                # Falls die ZeitID nicht existiert, füge sie in die Zeit-Tabelle ein
+                year = date_part.year
+                month = date_part.month
+                week = start_time.strftime('%U')  # Wochennummer
+                weekday = start_time.strftime('%A')  # Wochentag
+                
+                # Füge die neue ZeitID in die Zeit-Tabelle ein
+                dest_cursor.execute(query_insert_time, (time_id, date_part, time_part, year, month, week, weekday))
+                print(f"Neue ZeitID {time_id} wurde in die Zeit-Tabelle eingefügt.")
             
-            if time_id_result:
-                time_id = time_id_result[0]
-                
-                # Setze die Daten für das Einfügen in die Fakt_Produktionsauftrag Tabelle
-                data_tuple = (
-                    row['ProduktID'],
-                    row['MaschinenID'],
-                    time_id,  # Verknüpfung mit ZeitID
-                    row['Auslastung'],
-                    row['Produktionsmenge'],
-                    row['Ausschussmenge']
-                )
-                
-                dest_cursor.execute(insert_query, data_tuple)
-        
+            # Verwende die ZeitID (die bereits existieren sollte oder eben gerade eingefügt wurde)
+            data_tuple = (
+                row['ProduktID'],
+                row['MaschinenID'],
+                time_id,  # Verknüpfung mit ZeitID
+                row['Auslastung'],
+                row['Produktionsmenge'],
+                row['Ausschussmenge']
+            )
+            
+            # Füge die Produktionsdaten in die Fakt_Produktionsauftrag Tabelle ein
+            dest_cursor.execute(insert_query, data_tuple)
+
         dest_conn.commit()
         print("Daten wurden erfolgreich in das DWH geladen.")
         
