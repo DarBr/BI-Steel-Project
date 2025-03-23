@@ -4,21 +4,25 @@ from datetime import datetime, timedelta
 
 def generate_production_data(start_date, num_days):
     """Erstellt Produktionsaufträge für die angegebene Anzahl von Tagen."""
-    # Maschinen und ihre Produktionskapazität
+    # Maschinen und ihre Produktionskapazität und Verbrauch (nur Maschine 1 und 2)
     maschinen = {
-        1: 1.2,   # Lichtbogenofen 1: 1.2 T/h
-        2: 1.2,   # Lichtbogenofen 2: 1.2 T/h
-        3: 2.0    # Lichtbogenofen 3: 2.0 T/h
+        1: {'kapazitaet': 12.0, 'verbrauch': 25000.00},   # Lichtbogenofen 1: 12 T/h, 25.000 kWh/h
+        2: {'kapazitaet': 15.0, 'verbrauch': 30000.00}    # Lichtbogenofen 2: 15 T/h, 30.000 kWh/h
     }
     
     # Produkte (1-8)
     produkte = list(range(1, 9))
 
     auftraege = []
-
+    maschinen_betriebsstunden = {maschine: 0 for maschine in maschinen}  # Betriebsstunden pro Maschine
+    
     for day in range(num_days):
         date = start_date + timedelta(days=day)
-        for maschine, kapazitaet in maschinen.items():
+        
+        for maschine, details in maschinen.items():
+            kapazitaet = details['kapazitaet']
+            verbrauch_pro_tonne = details['verbrauch']  # Verbrauch pro Stunde für 1 Tonne
+
             # Definiere Produktwechselzeiten (drei Schichten: 00:00, 08:00, 16:00)
             schichtwechsel = [0, 8, 16]
             produkt_id = random.choice(produkte)  # Anfangsprodukt setzen
@@ -30,19 +34,46 @@ def generate_production_data(start_date, num_days):
                 if hour in schichtwechsel:
                     produkt_id = random.choice(produkte)
 
-                # Auslastung je nach Uhrzeit variieren
-                if 10 <= hour < 16:
-                    auslastung = random.randint(85, 100)  # Höhere Auslastung am Tag
+                # Wartung einplanen: wenn die Betriebsstunden einer Maschine zwischen 2000 und 4000 liegen
+                maschinen_betriebsstunden[maschine] += 1
+                if 2000 <= maschinen_betriebsstunden[maschine] <= 4000:
+                    # Wartung für 8 Stunden
+                    if hour < 8:
+                        auslastung = 0
+                        produktionsmenge = 0
+                        ausschussmenge = 0
+                        verbrauch = 0
+                    else:
+                        auslastung = 0
+                        produktionsmenge = 0
+                        ausschussmenge = 0
+                        verbrauch = 0
                 else:
-                    auslastung = random.randint(70, 85)  # Niedrigere Auslastung sonst
+                    # Auslastung je nach Uhrzeit variieren
+                    if 10 <= hour < 16:
+                        auslastung = random.randint(85, 100)  # Höhere Auslastung am Tag
+                    else:
+                        auslastung = random.randint(70, 85)  # Niedrigere Auslastung sonst
 
-                # Berechnung der Produktionsmenge
-                produktionsmenge = round(kapazitaet * (auslastung / 100), 3)
+                    # Berechnung der Produktionsmenge
+                    produktionsmenge = round(kapazitaet * (auslastung / 100), 3)
 
-                # Ausschussmenge als 1-5% der Produktionsmenge
-                ausschussmenge = round(produktionsmenge * random.uniform(0.01, 0.05), 3)
+                    # Ausschussmenge als 1-5% der Produktionsmenge
+                    ausschussmenge = round(produktionsmenge * random.uniform(0.01, 0.05), 3)  # 1-5% für alle Maschinen
 
-                auftraege.append((maschine, startzeit, produktionsmenge, ausschussmenge, produkt_id, auslastung))
+                    # Berechnung des Verbrauchs (kWh) basierend auf der Produktionsmenge
+                    verbrauch = round((produktionsmenge / kapazitaet) * verbrauch_pro_tonne, 2)
+
+                # Erstelle den Produktionsauftrag
+                auftraege.append((
+                    maschine,           # MaschinenID
+                    startzeit,          # Startzeit des Produktionsauftrags
+                    produktionsmenge,   # Produktionsmenge
+                    ausschussmenge,     # Ausschussmenge
+                    produkt_id,         # ProduktID
+                    auslastung,         # Auslastung in Prozent
+                    verbrauch           # Verbrauch in kWh
+                ))
     
     return auftraege
 
@@ -59,9 +90,9 @@ def insert_into_db(data):
         cursor = connection.cursor()
         
         insert_query = """
-            INSERT INTO tb_Produktionsauftrag (MaschinenID, Startzeit, Produktionsmenge, Ausschussmenge, ProduktID, Auslastung)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE Produktionsmenge = VALUES(Produktionsmenge), Ausschussmenge = VALUES(Ausschussmenge), Auslastung = VALUES(Auslastung);
+            INSERT INTO tb_Produktionsauftrag (MaschinenID, Startzeit, Produktionsmenge, Ausschussmenge, ProduktID, Auslastung, Verbrauch)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE Produktionsmenge = VALUES(Produktionsmenge), Ausschussmenge = VALUES(Ausschussmenge), Auslastung = VALUES(Auslastung), Verbrauch = VALUES(Verbrauch);
         """
         
         cursor.executemany(insert_query, data)
