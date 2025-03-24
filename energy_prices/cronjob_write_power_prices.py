@@ -10,7 +10,7 @@ from pytz import timezone
 import logging
 
 # Logging einrichten
-logging.basicConfig(filename='/path/to/logfile.log', level=logging.INFO,
+logging.basicConfig(filename='logs/power_prices.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 def fetch_energy_data():
