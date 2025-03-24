@@ -24,7 +24,7 @@ def fetch_production_data():
         source_cursor = source_conn.cursor(dictionary=True)
         
         query = """
-            SELECT ProduktionsID, MaschinenID, Startzeit, Produktionsmenge, Ausschussmenge, ProduktID, Auslastung
+            SELECT ProduktionsID, MaschinenID, Startzeit, Produktionsmenge, Ausschussmenge, ProduktID, Auslastung, Verbrauch
             FROM tb_Produktionsauftrag;
         """
         source_cursor.execute(query)
@@ -71,8 +71,8 @@ def load_production_data(df):
         
         # Einfügen der Produktionsdaten in die Fakt_Produktionsauftrag Tabelle
         insert_query = """
-            INSERT INTO Fakt_Produktionsauftrag (ProduktID, MaschinenID, ZeitID, Auslastung, Produktionsmenge, Ausschussmenge)
-            VALUES (%s, %s, %s, %s, %s, %s);
+            INSERT INTO Fakt_Produktionsauftrag (ProduktID, MaschinenID, ZeitID, Auslastung, Produktionsmenge, Ausschussmenge, Verbrauch)
+            VALUES (%s, %s, %s, %s, %s, %s, %s);
         """
         
         for _, row in df.iterrows():
@@ -106,7 +106,8 @@ def load_production_data(df):
                 time_id,  # Verknüpfung mit ZeitID
                 row['Auslastung'],
                 row['Produktionsmenge'],
-                row['Ausschussmenge']
+                row['Ausschussmenge'],
+                row['Verbrauch']  # NEU: Verbrauch wird gespeichert
             )
             
             # Füge die Produktionsdaten in die Fakt_Produktionsauftrag Tabelle ein
@@ -146,9 +147,6 @@ def plot_machine_utilization(df):
     # Zeige das Diagramm
     plt.show()
     
-    
-
-
 if __name__ == "__main__":
     # Extraktion der Produktionsdaten aus der Quell-Datenbank
     df_production = fetch_production_data()
