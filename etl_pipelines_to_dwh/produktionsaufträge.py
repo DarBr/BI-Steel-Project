@@ -69,10 +69,16 @@ def load_production_data(df):
             VALUES (%s, %s, %s, %s, %s, %s, %s);
         """
         
-        # Einfügen der Produktionsdaten in die Fakt_Produktionsauftrag Tabelle
+        # SQL-Query für das Einfügen oder Aktualisieren
         insert_query = """
-            INSERT INTO Fakt_Produktionsauftrag (ProduktID, MaschinenID, ZeitID, Auslastung, Produktionsmenge, Ausschussmenge, Verbrauch)
-            VALUES (%s, %s, %s, %s, %s, %s, %s);
+            INSERT INTO Fakt_Produktionsauftrag 
+                (ProduktID, MaschinenID, ZeitID, Auslastung, Produktionsmenge, Ausschussmenge, Verbrauch)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE 
+                Auslastung = VALUES(Auslastung),
+                Produktionsmenge = VALUES(Produktionsmenge),
+                Ausschussmenge = VALUES(Ausschussmenge),
+                Verbrauch = VALUES(Verbrauch);
         """
         
         for _, row in df.iterrows():

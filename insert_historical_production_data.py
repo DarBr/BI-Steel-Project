@@ -92,9 +92,13 @@ def insert_into_db(data):
         insert_query = """
             INSERT INTO tb_Produktionsauftrag (MaschinenID, Startzeit, Produktionsmenge, Ausschussmenge, ProduktID, Auslastung, Verbrauch)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE Produktionsmenge = VALUES(Produktionsmenge), Ausschussmenge = VALUES(Ausschussmenge), Auslastung = VALUES(Auslastung), Verbrauch = VALUES(Verbrauch);
+            ON DUPLICATE KEY UPDATE 
+                Produktionsmenge = VALUES(Produktionsmenge),
+                Ausschussmenge = VALUES(Ausschussmenge),
+                Auslastung = VALUES(Auslastung),
+                Verbrauch = VALUES(Verbrauch);
         """
-        
+
         cursor.executemany(insert_query, data)
         connection.commit()
         print(f"{cursor.rowcount} Produktionsaufträge erfolgreich eingefügt.")
