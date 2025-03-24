@@ -5,11 +5,10 @@ import mysql.connector
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone, timedelta
 import pytz
-import logging
 
-# Logging einrichten
-logging.basicConfig(filename='logs/steel_prices.log', level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+# Funktion zum Ausgeben von Logs
+def print_to_log(message):
+    print(message)
 
 def fetch_hrc_price():
     url = 'https://tradingeconomics.com/commodity/hrc-steel'
@@ -32,13 +31,13 @@ def fetch_hrc_price():
                     break
         
         if hrc_price:
-            logging.info(f"Aktueller HRC-Stahlpreis: {hrc_price} USD/T")
+            print_to_log(f"Aktueller HRC-Stahlpreis: {hrc_price} USD/T")
             return hrc_price
         else:
-            logging.error("Fehler: Konnte den Stahlpreis nicht finden.")
+            print_to_log("Fehler: Konnte den Stahlpreis nicht finden.")
             return None
     else:
-        logging.error(f"Fehler bei der Anfrage: {response.status_code}")
+        print_to_log(f"Fehler bei der Anfrage: {response.status_code}")
         return None
 
 
@@ -81,9 +80,9 @@ def save_to_db(price):
                 """
                 cursor.execute(insert_zeit_query, (zeit_id, current_date, rounded_datetime.time(), jahr, monat, quartal, wochentag))
                 connection.commit()
-                logging.info("Neue ZeitID in Zeit eingefügt.")
+                print_to_log("Neue ZeitID in Zeit eingefügt.")
             else:
-                logging.info("ZeitID existiert bereits in Zeit.")
+                print_to_log("ZeitID existiert bereits in Zeit.")
             
             # Jetzt die Daten in Dim_Marktpreise einfügen mit der ZeitID
             materialname = "HRC Stahl"
@@ -95,12 +94,12 @@ def save_to_db(price):
             """
             cursor.execute(insert_query, (zeit_id, materialname, price, einheit))
             connection.commit()
-            logging.info("Daten erfolgreich gespeichert oder aktualisiert.")
+            print_to_log("Daten erfolgreich gespeichert oder aktualisiert.")
             
             cursor.close()
             connection.close()
     except mysql.connector.Error as err:
-        logging.error(f"Fehler: {err}")
+        print_to_log(f"Fehler: {err}")
 
 
 def main():
