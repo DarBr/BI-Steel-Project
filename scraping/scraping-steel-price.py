@@ -4,8 +4,12 @@ import json
 import mysql.connector
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone, timedelta
-import time
-import pytz  # Importiere pytz
+import pytz
+import logging
+
+# Logging einrichten
+logging.basicConfig(filename='/home/ubuntu/BI-Steel-Project/logs/scraping-steel-price.log', level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
 def fetch_hrc_price():
     url = 'https://tradingeconomics.com/commodity/hrc-steel'
@@ -28,13 +32,13 @@ def fetch_hrc_price():
                     break
         
         if hrc_price:
-            print(f"Aktueller HRC-Stahlpreis: {hrc_price} USD/T")
+            logging.info(f"Aktueller HRC-Stahlpreis: {hrc_price} USD/T")
             return hrc_price
         else:
-            print("Fehler: Konnte den Stahlpreis nicht finden.")
+            logging.error("Fehler: Konnte den Stahlpreis nicht finden.")
             return None
     else:
-        print(f"Fehler bei der Anfrage: {response.status_code}")
+        logging.error(f"Fehler bei der Anfrage: {response.status_code}")
         return None
 
 
@@ -77,9 +81,9 @@ def save_to_db(price):
                 """
                 cursor.execute(insert_zeit_query, (zeit_id, current_date, rounded_datetime.time(), jahr, monat, quartal, wochentag))
                 connection.commit()
-                print("Neue ZeitID in Zeit eingefügt.")
+                logging.info("Neue ZeitID in Zeit eingefügt.")
             else:
-                print("ZeitID existiert bereits in Zeit.")
+                logging.info("ZeitID existiert bereits in Zeit.")
             
             # Jetzt die Daten in Dim_Marktpreise einfügen mit der ZeitID
             materialname = "HRC Stahl"
@@ -91,27 +95,19 @@ def save_to_db(price):
             """
             cursor.execute(insert_query, (zeit_id, materialname, price, einheit))
             connection.commit()
-            print("Daten erfolgreich gespeichert oder aktualisiert.")
+            logging.info("Daten erfolgreich gespeichert oder aktualisiert.")
             
             cursor.close()
             connection.close()
     except mysql.connector.Error as err:
-        print(f"Fehler: {err}")
+        logging.error(f"Fehler: {err}")
 
 
-def wait_until_next_hour():
-    # Berechne die Zeit bis zur nächsten vollen Stunde
-    now = datetime.now(pytz.utc).astimezone(pytz.timezone('Europe/Berlin'))  # UTC nach Berlin Zeit konvertieren
-    next_hour = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
-    wait_time = (next_hour - now).total_seconds()
-    
-    print(f"Warte bis zur nächsten vollen Stunde. (Wartezeit: {wait_time} Sekunden)")
-    time.sleep(wait_time)
+def main():
+    price = fetch_hrc_price()
+    if price is not None:
+        save_to_db(price)
 
 
 if __name__ == "__main__":
-    while True:
-        wait_until_next_hour()  # Warte bis zur nächsten vollen Stunde
-        price = fetch_hrc_price()
-        if price is not None:
-            save_to_db(price)
+    main()
