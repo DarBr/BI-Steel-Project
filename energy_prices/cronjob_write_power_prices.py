@@ -7,23 +7,22 @@ from datetime import datetime, timedelta
 from sqlalchemy import create_engine
 import pytz
 from pytz import timezone
-import logging
 
-# Logging einrichten
-logging.basicConfig(filename='logs/power_prices.log', level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+# Umleitungen von print in eine Datei (Standardausgabe) im Cronjob
+def print_to_log(message):
+    print(message)
 
 def fetch_energy_data():
     url = "https://apis.smartenergy.at/market/v1/price"
     try:
         response = requests.get(url)
         response.raise_for_status()  # Wird eine Ausnahme bei Fehlerstatus auslösen
-        logging.info("Daten erfolgreich abgerufen.")
+        print_to_log("Daten erfolgreich abgerufen.")
         return response.json()
     except requests.exceptions.HTTPError as errh:
-        logging.error(f"HTTP Fehler: {errh}")
+        print_to_log(f"HTTP Fehler: {errh}")
     except requests.exceptions.RequestException as err:
-        logging.error(f"Fehler beim Abrufen der Daten: {err}")
+        print_to_log(f"Fehler beim Abrufen der Daten: {err}")
     return None
 
 def save_to_dataframe(data):
@@ -39,10 +38,10 @@ def save_to_dataframe(data):
         df_hourly = df.resample('h', on='zeit').mean().reset_index()
         df_hourly.rename(columns={'preis': 'preis_pro_stunde'}, inplace=True)
         
-        logging.info("Daten erfolgreich in DataFrame umgewandelt.")
+        print_to_log("Daten erfolgreich in DataFrame umgewandelt.")
         return df_hourly
     else:
-        logging.warning("Keine Daten zum Speichern.")
+        print_to_log("Keine Daten zum Speichern.")
     return None
 
 def save_time_to_db(cursor, timestamp):
@@ -61,7 +60,7 @@ def save_time_to_db(cursor, timestamp):
             VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
         cursor.execute(insert_query, (ZeitID, datum, uhrzeit, jahr, monat, quartal, wochentag))
-        logging.info(f"Zeit {ZeitID} erfolgreich in Datenbank gespeichert.")
+        print_to_log(f"Zeit {ZeitID} erfolgreich in Datenbank gespeichert.")
 
 def save_to_db(df):
     try:
@@ -86,12 +85,12 @@ def save_to_db(df):
                 save_time_to_db(cursor, timestamp)
                 cursor.execute(insert_query, (row['preis_pro_stunde'], ZeitID))
             connection.commit()
-            logging.info("Daten erfolgreich in die Datenbank gespeichert oder aktualisiert.")
+            print_to_log("Daten erfolgreich in die Datenbank gespeichert oder aktualisiert.")
             cursor.close()
             connection.close()
     
     except mysql.connector.Error as err:
-        logging.error(f"Datenbankfehler: {err}")
+        print_to_log(f"Datenbankfehler: {err}")
 
 def save_to_csv(df):
     filename = "machine_learning/energy_prices_data.csv"
@@ -128,9 +127,9 @@ def save_to_csv(df):
     if new_entries:
         with open(filename, 'a', encoding='utf-8') as f:
             f.write('\n'.join(new_entries) + '\n')
-        logging.info(f"{len(new_entries)} neue Einträge in CSV gespeichert.")
+        print_to_log(f"{len(new_entries)} neue Einträge in CSV gespeichert.")
     else:
-        logging.info("Keine neuen Daten für CSV.")
+        print_to_log("Keine neuen Daten für CSV.")
 
 def wait_until_next_run():
     cet = timezone('Europe/Vienna')
@@ -141,18 +140,18 @@ def wait_until_next_run():
         target_time += timedelta(days=1)
     
     wait_seconds = (target_time - now).total_seconds()
-    logging.info(f"Nächste Ausführung um {target_time.strftime('%d.%m.%Y %H:%M')} CET")
+    print_to_log(f"Nächste Ausführung um {target_time.strftime('%d.%m.%Y %H:%M')} CET")
     time.sleep(wait_seconds)
 
 if __name__ == "__main__":
-    logging.info("Skript gestartet.")
+    print_to_log("Skript gestartet.")
     data = fetch_energy_data()
     if data:
         df = save_to_dataframe(data)
         if df is not None:
-            logging.info("Aktuelle Daten:")
-            logging.info(df)
+            print_to_log("Aktuelle Daten:")
+            print_to_log(df)
             save_to_db(df)
             save_to_csv(df)
     else:
-        logging.error("Daten konnten nicht abgerufen werden.")
+        print_to_log("Daten konnten nicht abgerufen werden.")
