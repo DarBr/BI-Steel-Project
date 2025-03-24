@@ -8,7 +8,7 @@ import pytz
 import logging
 
 # Logging einrichten
-logging.basicConfig(filename='/home/ubuntu/BI-Steel-Project/logs/scraping-steel-price.log', level=logging.INFO,
+logging.basicConfig(filename='logs/power_prices.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 def fetch_hrc_price():
