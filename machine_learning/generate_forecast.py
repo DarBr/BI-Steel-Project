@@ -16,9 +16,19 @@ model_path = "machine_learning/energy_price_model.h5"
 
 # Lade die Strompreisdaten
 df = pd.read_csv(file_path, sep=';', decimal=',')
-df['Datetime'] = pd.to_datetime(df['Datum'] + ' ' + df['von'], format='%d.%m.%Y %H:%M')
+df['Datetime'] = pd.to_datetime(df['Datum'] + ' ' + df['von'], format='%d.%m.%Y %H:%M', errors='coerce')
+
+# Entferne Zeilen mit NaN-Werten in der 'Datetime'-Spalte
+df.dropna(subset=['Datetime'], inplace=True)
+
+# Wähle die relevanten Spalten und benenne sie um
 df = df[['Datetime', 'Spotmarktpreis in ct/kWh']]
 df.rename(columns={'Spotmarktpreis in ct/kWh': 'Spotpreis'}, inplace=True)
+
+# Entfernen von Zeilen mit NaN-Werten in der Spotpreis-Spalte
+df.dropna(subset=['Spotpreis'], inplace=True)
+
+# Setze 'Datetime' als Index
 df.set_index('Datetime', inplace=True)
 
 # Normalisiere die Spotpreis-Daten
