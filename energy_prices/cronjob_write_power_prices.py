@@ -131,18 +131,6 @@ def save_to_csv(df):
     else:
         print_to_log("Keine neuen Daten für CSV.")
 
-def wait_until_next_run():
-    cet = timezone('Europe/Vienna')
-    now = datetime.now(cet)
-    target_time = now.replace(hour=18, minute=0, second=0, microsecond=0)
-    
-    if now >= target_time:
-        target_time += timedelta(days=1)
-    
-    wait_seconds = (target_time - now).total_seconds()
-    print_to_log(f"Nächste Ausführung um {target_time.strftime('%d.%m.%Y %H:%M')} CET")
-    time.sleep(wait_seconds)
-
 if __name__ == "__main__":
     print_to_log("Skript gestartet.")
     data = fetch_energy_data()
