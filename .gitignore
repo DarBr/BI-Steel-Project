@@ -10,4 +10,7 @@ __pycache__/
 # Ignoriere alle .log-Dateien
 *.log
 
+# Ignoriere den Ordner für Logs
+logs/
+
 *.h5
