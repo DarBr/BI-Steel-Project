@@ -8,7 +8,7 @@ import pytz
 import logging
 
 # Logging einrichten
-logging.basicConfig(filename='logs/power_prices.log', level=logging.INFO,
+logging.basicConfig(filename='logs/steel_prices.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 def fetch_hrc_price():
