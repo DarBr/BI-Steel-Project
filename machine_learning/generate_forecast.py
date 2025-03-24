@@ -11,8 +11,8 @@ import json
 from datetime import datetime, timedelta
 
 # Dateipfad für die CSV-Daten
-file_path = "/energy_prices_data.csv"
-model_path = "/energy_price_model.h5"  
+file_path = "energy_prices_data.csv"
+model_path = "energy_price_model.h5"  
 
 # Lade die Strompreisdaten
 df = pd.read_csv(file_path, sep=';', decimal=',')
