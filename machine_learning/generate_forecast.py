@@ -57,8 +57,12 @@ def predict_for_next_day(model, data, seq_length=336, output_length=24):
 # Berechne die Vorhersage
 predictions = predict_for_next_day(model, data)
 
+# Bestimme das Datum für die Vorhersage
+last_date = df.index[-1]  # Das Datum des letzten Eintrags
+next_day = last_date + timedelta(days=1)  # Der nächste Tag nach dem letzten Eintrag
+
 # Speichern der Vorhersage in der Datenbank
-def save_forecast_to_db(predictions):
+def save_forecast_to_db(predictions, next_day):
     try:
         connection = mysql.connector.connect(
             host="13.60.244.59",
@@ -71,8 +75,8 @@ def save_forecast_to_db(predictions):
         if connection.is_connected():
             cursor = connection.cursor()
             
-            # ZeitID für die Vorhersage (z. B. heutiges Datum mit Uhrzeit 00:00)
-            current_time = datetime.now().strftime('%Y-%m-%d') + ":00-00"  # Format: YYYY-MM-DD:00-00
+            # ZeitID für die Vorhersage (nächster Tag)
+            forecast_time = next_day.strftime('%Y-%m-%d') + ":00-00"  # Format: YYYY-MM-DD:00-00
             
             # Umwandeln der Vorhersage in JSON
             forecast_json = {"forecast": predictions.tolist()}  # JSON format
@@ -82,9 +86,9 @@ def save_forecast_to_db(predictions):
                 VALUES (%s, %s)
                 ON DUPLICATE KEY UPDATE Vorhersage = VALUES(Vorhersage);
             """
-            cursor.execute(insert_query, (current_time, json.dumps(forecast_json)))
+            cursor.execute(insert_query, (forecast_time, json.dumps(forecast_json)))
             connection.commit()
-            print(f"Vorhersage für {current_time} erfolgreich gespeichert.")
+            print(f"Vorhersage für {forecast_time} erfolgreich gespeichert.")
             
             cursor.close()
             connection.close()
@@ -93,4 +97,4 @@ def save_forecast_to_db(predictions):
         print(f"Fehler beim Speichern der Vorhersage in die Datenbank: {err}")
 
 # Speichern der Vorhersage in die Datenbank
-save_forecast_to_db(predictions)
+save_forecast_to_db(predictions, next_day)
