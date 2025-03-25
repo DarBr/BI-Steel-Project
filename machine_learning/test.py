@@ -1,4 +1,7 @@
 import os
+import sklearn
+print(sklearn.__version__)
+
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # Verzeichnis des aktuellen Skripts
 data_path = os.path.join(BASE_DIR, "energy_prices_data.csv")  # Kein führender /
