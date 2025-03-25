@@ -11,3 +11,4 @@ model_path = os.path.join(BASE_DIR, "energy_price_model.h5")  # Kein führender 
 
 print(data_path)
 print(model_path)
+print(BASE_DIR)

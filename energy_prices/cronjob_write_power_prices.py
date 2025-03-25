@@ -93,6 +93,10 @@ def save_to_db(df):
         print_to_log(f"Datenbankfehler: {err}")
 
 def save_to_csv(df):
+    # Aktuelles Arbeitsverzeichnis überprüfen
+    current_working_dir = os.getcwd()
+    print(f"Aktueller Arbeitsordner: {current_working_dir}")
+
     # Basisverzeichnis relativ zum Skriptverzeichnis setzen
     script_dir = os.path.dirname(os.path.abspath(__file__))  # Verzeichnis des Skripts
     base_dir = os.path.join(script_dir, "..", "machine_learning")  # Ein Verzeichnis nach oben
@@ -102,12 +106,15 @@ def save_to_csv(df):
 
     # Falls das Verzeichnis nicht existiert, erstelle es
     if not os.path.exists(base_dir):
+        print(f"Verzeichnis existiert nicht, wird erstellt: {base_dir}")
         os.makedirs(base_dir)
 
     # Existierende Daten laden
     if os.path.exists(filename):
+        print(f"Datei existiert, lade bestehende Daten: {filename}")
         existing_df = pd.read_csv(filename, sep=';', header=None, dtype=str)
     else:
+        print(f"Datei existiert nicht, erstelle neue Datei: {filename}")
         existing_df = pd.DataFrame()
 
     new_entries = []
@@ -122,7 +129,7 @@ def save_to_csv(df):
         price_str = f"{row['preis_pro_stunde']:.2f}".replace('.', ',')
         
         # CSV-Zeile erstellen
-        csv_line = f"{date_str};{start_time};CET;{end_time};CET;{price_str}\n"
+        csv_line = f"{date_str};{start_time};CET;{end_time};CET;{price_str}"
 
         # Prüfen, ob die Zeile bereits existiert (Vermeidung von Duplikaten)
         if not existing_df.empty:
@@ -135,10 +142,11 @@ def save_to_csv(df):
     # Überprüfen, ob tatsächlich neue Einträge vorliegen
     if new_entries:
         with open(filename, 'a', encoding='utf-8') as f:  # 'a' = Anhängen, keine Überschreibung
-            f.writelines(new_entries)  # Mehrere Zeilen anhängen
+            f.writelines([line + "\n" for line in new_entries])  # Mehrere Zeilen anhängen
         print_to_log(f"{len(new_entries)} neue Einträge in CSV gespeichert.")
     else:
         print_to_log("Keine neuen Daten für CSV.")
+
 
 if __name__ == "__main__":
     print_to_log("Skript gestartet.")
