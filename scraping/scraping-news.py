@@ -113,8 +113,6 @@ def main():
         print("Keine neuen Nachrichten zum Speichern.")
 
 if __name__ == "__main__":
-    while True:
-        print("Starte den täglichen News-Scraper...")
-        main()
-        print("Warte 24 Stunden bis zum nächsten Durchlauf...")
-        time.sleep(86400)
+    print("Starte den täglichen News-Scraper...")
+    main()
+
