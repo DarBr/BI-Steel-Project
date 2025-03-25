@@ -46,6 +46,7 @@ def load_model_and_predict(data, scaler, seq_length=336, output_length=24):
     
     # Vorhersage für den nächsten Tag
     latest_data = np.array([data[-seq_length:]])
+    print(latest_data)
     latest_data = latest_data.reshape((1, seq_length, 1))
     predictions = model.predict(latest_data)
     
@@ -115,12 +116,7 @@ def main():
    
     df, scaler = load_data()
     
-    
-    seq_length = 336
-    output_length = 24
     data = df['Spotpreis'].values
-    X, y = create_sequences(data, seq_length, output_length)
-    X = X.reshape((X.shape[0], X.shape[1], 1))
     
     predictions = load_model_and_predict(data, scaler)
     
