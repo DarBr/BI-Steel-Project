@@ -93,9 +93,18 @@ def save_to_db(df):
         print_to_log(f"Datenbankfehler: {err}")
 
 def save_to_csv(df):
-    filename = "machine_learning/energy_prices_data.csv"
-    
-    # Existierende Daten lesen
+    # Basisverzeichnis relativ zum Skriptverzeichnis setzen
+    script_dir = os.path.dirname(os.path.abspath(__file__))  # Verzeichnis des Skripts
+    base_dir = os.path.join(script_dir, "..", "machine_learning")  # Ein Verzeichnis nach oben
+    filename = os.path.join(base_dir, "energy_prices_data.csv")
+
+    print(f"Speichere Datei hier: {filename}")  # Debug-Print zur Überprüfung des Pfads
+
+    # Falls das Verzeichnis nicht existiert, erstelle es
+    if not os.path.exists(base_dir):
+        os.makedirs(base_dir)
+
+    # Existierende Daten laden
     if os.path.exists(filename):
         existing_df = pd.read_csv(filename, sep=';', header=None, dtype=str)
     else:
@@ -112,21 +121,21 @@ def save_to_csv(df):
         # Preis formatieren
         price_str = f"{row['preis_pro_stunde']:.2f}".replace('.', ',')
         
-        csv_line = f"{date_str};{start_time};CET;{end_time};CET;{price_str}"
-        
-        # Duplikatprüfung
+        # CSV-Zeile erstellen
+        csv_line = f"{date_str};{start_time};CET;{end_time};CET;{price_str}\n"
+
+        # Prüfen, ob die Zeile bereits existiert (Vermeidung von Duplikaten)
         if not existing_df.empty:
-            exists = ((existing_df[0] == date_str) & 
-                     (existing_df[1] == start_time)).any()
+            exists = ((existing_df[0] == date_str) & (existing_df[1] == start_time)).any()
             if not exists:
                 new_entries.append(csv_line)
         else:
             new_entries.append(csv_line)
-    
-    # Neue Einträge speichern
+
+    # Überprüfen, ob tatsächlich neue Einträge vorliegen
     if new_entries:
-        with open(filename, 'a', encoding='utf-8') as f:
-            f.write('\n'.join(new_entries) + '\n')
+        with open(filename, 'a', encoding='utf-8') as f:  # 'a' = Anhängen, keine Überschreibung
+            f.writelines(new_entries)  # Mehrere Zeilen anhängen
         print_to_log(f"{len(new_entries)} neue Einträge in CSV gespeichert.")
     else:
         print_to_log("Keine neuen Daten für CSV.")

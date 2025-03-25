@@ -18,6 +18,7 @@ MODEL_PATH = os.path.join(BASE_DIR, "energy_price_model.h5")
 def load_data():
     """Lädt die Strompreisdaten und bereitet sie vor."""
     df = pd.read_csv(DATA_PATH, sep=';', decimal=',')
+    df = df.dropna()
     df['Datetime'] = pd.to_datetime(df['Datum'] + ' ' + df['von'], format='%d.%m.%Y %H:%M', errors='coerce')
     df.dropna(subset=['Datetime'], inplace=True)
     df = df[['Datetime', 'Spotmarktpreis in ct/kWh']]
@@ -46,7 +47,6 @@ def load_model_and_predict(data, scaler, seq_length=336, output_length=24):
     
     # Vorhersage für den nächsten Tag
     latest_data = np.array([data[-seq_length:]])
-    print(latest_data)
     latest_data = latest_data.reshape((1, seq_length, 1))
     predictions = model.predict(latest_data)
     
