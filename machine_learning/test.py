@@ -1,6 +1,8 @@
 import os
 import sklearn
 print(sklearn.__version__)
+from sklearn.preprocessing import MinMaxScaler
+
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # Verzeichnis des aktuellen Skripts
