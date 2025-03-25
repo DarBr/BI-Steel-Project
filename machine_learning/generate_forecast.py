@@ -39,8 +39,8 @@ def create_sequences(data, seq_length=336, output_length=24):
         y.append(data[i + seq_length:i + seq_length + output_length])
     return np.array(X), np.array(y)
 
-def load_model_and_predict(data, seq_length=336, output_length=24):
-    """Lädt das Modell und gibt die Vorhersage für den nächsten Tag zurück."""
+def load_model_and_predict(data, scaler, seq_length=336, output_length=24):
+    """Lädt das Modell, gibt die Vorhersage zurück und skaliert sie zurück."""
     # Modell laden
     model = load_model(MODEL_PATH, custom_objects={'mse': MeanSquaredError()}, compile=False)
     
@@ -49,7 +49,11 @@ def load_model_and_predict(data, seq_length=336, output_length=24):
     latest_data = latest_data.reshape((1, seq_length, 1))
     predictions = model.predict(latest_data)
     
+    # Zurückskalieren der Vorhersage auf Originalwerte
+    predictions = scaler.inverse_transform(predictions)
+
     return predictions
+
 
 def save_time_to_db(cursor, timestamp):
     """Fügt die Zeitdaten in die Zeittabelle ein, falls diese noch nicht existiert."""
@@ -118,11 +122,11 @@ def main():
     X, y = create_sequences(data, seq_length, output_length)
     X = X.reshape((X.shape[0], X.shape[1], 1))
     
-    predictions = load_model_and_predict(data)
+    predictions = load_model_and_predict(data, scaler)
     
     last_date = df.index[-1]
     next_day = last_date + timedelta(days=1)
-    
+    print(predictions)
     save_forecast_to_db(predictions, next_day)
 
 if __name__ == "__main__":

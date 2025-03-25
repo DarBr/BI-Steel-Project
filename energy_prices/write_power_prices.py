@@ -1,10 +1,12 @@
 import requests
 import pandas as pd
 import mysql.connector
-import matplotlib.pyplot as plt
+import os
+import time
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine
-import time
+import pytz
+from pytz import timezone
 
 def fetch_energy_data():
     url = "https://apis.smartenergy.at/market/v1/price"
@@ -20,9 +22,11 @@ def save_to_dataframe(data):
         records = data['data']
         df = pd.DataFrame(records)
         df.rename(columns={'date': 'zeit', 'value': 'preis'}, inplace=True)
-        df['zeit'] = pd.to_datetime(df['zeit'])
         
-        # Gruppiere nach Stunde und berechne den Durchschnittspreis pro Stunde
+        # Konvertiere Zeit und konvertiere Zeitzone zu CET
+        df['zeit'] = pd.to_datetime(df['zeit']).dt.tz_convert(timezone('Europe/Vienna'))
+        
+        # Gruppiere nach Stunde
         df_hourly = df.resample('h', on='zeit').mean().reset_index()
         df_hourly.rename(columns={'preis': 'preis_pro_stunde'}, inplace=True)
         
@@ -32,7 +36,6 @@ def save_to_dataframe(data):
         return None
 
 def save_time_to_db(cursor, timestamp):
-    """Fügt die Zeitdaten in die Zeittabelle ein, falls diese noch nicht existiert."""
     ZeitID = timestamp.strftime('%Y-%m-%d:%H') + "-00"
     datum = timestamp.date()
     uhrzeit = timestamp.time()
@@ -41,10 +44,8 @@ def save_time_to_db(cursor, timestamp):
     quartal = (monat - 1) // 3 + 1
     wochentag = timestamp.strftime('%A')
 
-    # Prüfen, ob ZeitID bereits existiert
     cursor.execute("SELECT COUNT(*) FROM Zeit WHERE ZeitID = %s", (ZeitID,))
     if cursor.fetchone()[0] == 0:
-        # ZeitID in die Zeittabelle einfügen
         insert_query = """
             INSERT INTO Zeit (ZeitID, Datum, Uhrzeit, Jahr, Monat, Q, Wochentag)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
@@ -69,9 +70,9 @@ def save_to_db(df):
                 ON DUPLICATE KEY UPDATE Energiepreis = VALUES(Energiepreis);
             """
             for _, row in df.iterrows():
-                timestamp = row['zeit']
-                ZeitID = timestamp.strftime('%Y-%m-%d:%H') + "-00"  # ZeitID mit voller Stunde erstellen
-                save_time_to_db(cursor, timestamp)  # ZeitID in Zeittabelle speichern
+                timestamp = row['zeit'].to_pydatetime()
+                ZeitID = timestamp.strftime('%Y-%m-%d:%H') + "-00"
+                save_time_to_db(cursor, timestamp)
                 cursor.execute(insert_query, (row['preis_pro_stunde'], ZeitID))
             connection.commit()
             print("Daten erfolgreich gespeichert oder aktualisiert.")
@@ -79,44 +80,58 @@ def save_to_db(df):
             connection.close()
     
     except mysql.connector.Error as err:
-        print(f"Fehler: {err}")
+        print(f"Datenbankfehler: {err}")
 
-def read_from_db():
-    try:
-        # SQLAlchemy-Engine erstellen
-        db_uri = "mysql+mysqlconnector://user:clientserver@3.142.199.164:3306/database-dwh"
-        engine = create_engine(db_uri)
-
-        query = "SELECT Zeit, Energiepreis FROM Energiepreise ORDER BY Zeit ASC;"
-        df = pd.read_sql(query, con=engine)  # SQLAlchemy wird jetzt genutzt!
-        
-        return df
-
-    except Exception as err:
-        print(f"Fehler: {err}")
-        return None
-
-def plot_energy_prices(df):
-    if df is not None and not df.empty:
-        plt.figure(figsize=(10, 5))
-        plt.plot(df['Zeit'], df['Energiepreis'], marker='o', linestyle='-', color='b')
-        plt.xlabel('Zeit')
-        plt.ylabel('Energiepreis')
-        plt.title('Energiepreise über die Zeit')
-        plt.xticks(rotation=45)
-        plt.grid()
-        plt.show()
+def save_to_csv(df):
+    # Dynamischer Pfad zur CSV-Datei relativ zum Skriptverzeichnis
+    script_dir = os.path.dirname(__file__)  # Verzeichnis des Skripts
+    filename = os.path.join(script_dir, "machine_learning", "energy_prices_data.csv")
+    
+    # Sicherstellen, dass das Verzeichnis existiert
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    
+    # Existierende Daten lesen
+    if os.path.exists(filename):
+        existing_df = pd.read_csv(filename, sep=';', header=None, dtype=str)
     else:
-        print("Keine Daten zum Plotten verfügbar.")
+        existing_df = pd.DataFrame()
 
+    new_entries = []
+    for _, row in df.iterrows():
+        # Zeitangaben formatieren
+        cet_time = row['zeit'].astimezone(timezone('Europe/Vienna'))
+        date_str = cet_time.strftime('%d.%m.%Y')
+        start_time = cet_time.strftime('%H:%M')
+        end_time = (cet_time + timedelta(hours=1)).strftime('%H:%M')
+        
+        # Preis formatieren
+        price_str = f"{row['preis_pro_stunde']:.2f}".replace('.', ',')
+        
+        csv_line = f"{date_str};{start_time};CET;{end_time};CET;{price_str}"
+        
+        # Duplikatprüfung
+        if not existing_df.empty:
+            exists = ((existing_df[0] == date_str) & 
+                     (existing_df[1] == start_time)).any()
+            if not exists:
+                new_entries.append(csv_line)
+        else:
+            new_entries.append(csv_line)
+    
+    # Neue Einträge speichern
+    if new_entries:
+        with open(filename, 'a', encoding='utf-8') as f:
+            f.write('\n'.join(new_entries) + '\n')
+        print(f"{len(new_entries)} neue Einträge in CSV gespeichert.")
+    else:
+        print("Keine neuen Daten für CSV.")
 
 if __name__ == "__main__":
     data = fetch_energy_data()
     if data:
         df = save_to_dataframe(data)
         if df is not None:
+            print("\nAktuelle Daten:")
             print(df)
             save_to_db(df)
-
-    #df_db = read_from_db()
-    #plot_energy_prices(df_db)
+            save_to_csv(df)
