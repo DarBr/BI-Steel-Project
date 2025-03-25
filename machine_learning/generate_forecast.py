@@ -12,52 +12,68 @@ from datetime import datetime, timedelta
 
 # Dynamische Pfade setzen
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-data_path = os.path.join(BASE_DIR, "energy_prices_data.csv")
-model_path = os.path.join(BASE_DIR, "energy_price_model.h5")
+DATA_PATH = os.path.join(BASE_DIR, "energy_prices_data.csv")
+MODEL_PATH = os.path.join(BASE_DIR, "energy_price_model.h5")
 
-# Lade die Strompreisdaten
-df = pd.read_csv(data_path, sep=';', decimal=',')
-df['Datetime'] = pd.to_datetime(df['Datum'] + ' ' + df['von'], format='%d.%m.%Y %H:%M', errors='coerce')
+def load_data():
+    """Lädt die Strompreisdaten und bereitet sie vor."""
+    df = pd.read_csv(DATA_PATH, sep=';', decimal=',')
+    df['Datetime'] = pd.to_datetime(df['Datum'] + ' ' + df['von'], format='%d.%m.%Y %H:%M', errors='coerce')
+    df.dropna(subset=['Datetime'], inplace=True)
+    df = df[['Datetime', 'Spotmarktpreis in ct/kWh']]
+    df.rename(columns={'Spotmarktpreis in ct/kWh': 'Spotpreis'}, inplace=True)
+    df.dropna(subset=['Spotpreis'], inplace=True)
+    df.set_index('Datetime', inplace=True)
 
-df.dropna(subset=['Datetime'], inplace=True)
-df = df[['Datetime', 'Spotmarktpreis in ct/kWh']]
-df.rename(columns={'Spotmarktpreis in ct/kWh': 'Spotpreis'}, inplace=True)
-df.dropna(subset=['Spotpreis'], inplace=True)
-df.set_index('Datetime', inplace=True)
-
-# Normalisiere die Spotpreis-Daten
-scaler = MinMaxScaler(feature_range=(0, 1))
-df['Spotpreis'] = scaler.fit_transform(df[['Spotpreis']])
+    # Normalisiere die Spotpreis-Daten
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    df['Spotpreis'] = scaler.fit_transform(df[['Spotpreis']])
+    
+    return df, scaler
 
 def create_sequences(data, seq_length=336, output_length=24):
+    """Erstellt Sequenzen für die Eingabe und das erwartete Ausgabeformat."""
     X, y = [], []
     for i in range(len(data) - seq_length - output_length):
         X.append(data[i:i + seq_length])
         y.append(data[i + seq_length:i + seq_length + output_length])
     return np.array(X), np.array(y)
 
-seq_length = 336
-output_length = 24
-data = df['Spotpreis'].values
-X, y = create_sequences(data, seq_length, output_length)
-X = X.reshape((X.shape[0], X.shape[1], 1))
-
-# Modell laden
-model = load_model(model_path, custom_objects={'mse': MeanSquaredError()}, compile=False)
-
-def predict_for_next_day(model, data, seq_length=336, output_length=24):
+def load_model_and_predict(data, seq_length=336, output_length=24):
+    """Lädt das Modell und gibt die Vorhersage für den nächsten Tag zurück."""
+    # Modell laden
+    model = load_model(MODEL_PATH, custom_objects={'mse': MeanSquaredError()}, compile=False)
+    
+    # Vorhersage für den nächsten Tag
     latest_data = np.array([data[-seq_length:]])
     latest_data = latest_data.reshape((1, seq_length, 1))
     predictions = model.predict(latest_data)
-    predictions = scaler.inverse_transform(predictions)
-    return predictions[0]
+    
+    return predictions
 
-predictions = predict_for_next_day(model, data)
+def save_time_to_db(cursor, timestamp):
+    """Fügt die Zeitdaten in die Zeittabelle ein, falls diese noch nicht existiert."""
+    ZeitID = timestamp.strftime('%Y-%m-%d:%H') + "-00"
+    datum = timestamp.date()
+    uhrzeit = timestamp.time()
+    jahr = timestamp.year
+    monat = timestamp.month
+    quartal = (monat - 1) // 3 + 1
+    wochentag = timestamp.strftime('%A')
 
-last_date = df.index[-1]
-next_day = last_date + timedelta(days=1)
+    # Prüfen, ob ZeitID bereits existiert
+    cursor.execute("SELECT COUNT(*) FROM Zeit WHERE ZeitID = %s", (ZeitID,))
+    if cursor.fetchone()[0] == 0:
+        # ZeitID in die Zeittabelle einfügen
+        insert_query = """
+            INSERT INTO Zeit (ZeitID, Datum, Uhrzeit, Jahr, Monat, Q, Wochentag)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
+        cursor.execute(insert_query, (ZeitID, datum, uhrzeit, jahr, monat, quartal, wochentag))
+        print(f"ZeitID {ZeitID} wurde erfolgreich in die Zeittabelle eingefügt.")
 
 def save_forecast_to_db(predictions, next_day):
+    """Speichert die Vorhersage in der Datenbank, nachdem die ZeitID überprüft wurde."""
     try:
         connection = mysql.connector.connect(
             host="13.60.244.59",
@@ -69,6 +85,10 @@ def save_forecast_to_db(predictions, next_day):
         
         if connection.is_connected():
             cursor = connection.cursor()
+
+            # Speichern der ZeitID, falls nicht bereits vorhanden
+            save_time_to_db(cursor, next_day)
+            
             forecast_time = next_day.strftime('%Y-%m-%d') + ":00-00"
             forecast_json = {"forecast": predictions.tolist()}
 
@@ -86,5 +106,24 @@ def save_forecast_to_db(predictions, next_day):
 
     except mysql.connector.Error as err:
         print(f"Fehler beim Speichern der Vorhersage in die Datenbank: {err}")
+        
+def main():
+   
+    df, scaler = load_data()
+    
+    
+    seq_length = 336
+    output_length = 24
+    data = df['Spotpreis'].values
+    X, y = create_sequences(data, seq_length, output_length)
+    X = X.reshape((X.shape[0], X.shape[1], 1))
+    
+    predictions = load_model_and_predict(data)
+    
+    last_date = df.index[-1]
+    next_day = last_date + timedelta(days=1)
+    
+    save_forecast_to_db(predictions, next_day)
 
-save_forecast_to_db(predictions, next_day)
+if __name__ == "__main__":
+    main()
