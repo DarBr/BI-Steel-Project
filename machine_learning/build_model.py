@@ -9,9 +9,10 @@ from tensorflow.keras.layers import LSTM, Dense
 from tensorflow.keras.losses import MeanSquaredError
 from datetime import datetime, timedelta
 
-# Dateipfad
-file_path = "energy_prices_data.csv"
-model_path = "energy_price_model.h5"  
+# Dynamische Pfaderstellung
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # Verzeichnis des aktuellen Skripts
+file_path = os.path.join(BASE_DIR, "energy_prices_data.csv")  # Kein führender /
+model_path = os.path.join(BASE_DIR, "energy_price_model.h5")  # Kein führender /
 
 # Lade die Daten
 df = pd.read_csv(file_path, sep=';', decimal=',')
@@ -51,7 +52,7 @@ y_train, y_test = y[:train_size], y[train_size:]
 # Modell laden oder erstellen
 if os.path.exists(model_path):
     print("🔄 Lade vorhandenes Modell...")
-    model = load_model(model_path, custom_objects={'mse': MeanSquaredError()})
+    model = load_model(model_path, custom_objects={'mse': MeanSquaredError()}, compile=False)
 else:
     print("🆕 Erstelle neues Modell...")
     model = Sequential([
@@ -64,4 +65,4 @@ else:
 # Falls Modell neu erstellt, trainiere es und speichere es
 if not os.path.exists(model_path):  
     model.fit(X_train, y_train, epochs=10, batch_size=8, validation_data=(X_test, y_test))
-    model.save(model_path)  
+    model.save(model_path)

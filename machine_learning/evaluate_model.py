@@ -7,9 +7,13 @@ import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 import os
 
-# Datei- und Modellpfade
-data_path = "machine_learning/energy_prices_data.csv"
-model_path = "machine_learning/energy_price_model.h5"
+# Basisverzeichnis des Skripts bestimmen
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # Verzeichnis des aktuellen Skripts
+data_path = os.path.join(BASE_DIR, "energy_prices_data.csv")  # Dynamischer Pfad
+model_path = os.path.join(BASE_DIR, "energy_price_model.h5")  # Dynamischer Pfad
+
+print(f"Datenpfad: {data_path}")
+print(f"Modellpfad: {model_path}")
 
 # Lade die Daten
 df = pd.read_csv(data_path, sep=';', decimal=',', header=0)
@@ -45,7 +49,7 @@ y_train, y_test = y[:train_size], y[train_size:]
 
 # Lade das Modell
 if os.path.exists(model_path):
-    model = load_model(model_path, custom_objects={'mse': MeanSquaredError()})
+    model = load_model(model_path, custom_objects={'mse': MeanSquaredError()}, compile=False)
 else:
     raise FileNotFoundError("Modell nicht gefunden. Bitte trainiere es zuerst.")
 
