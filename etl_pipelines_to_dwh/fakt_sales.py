@@ -39,33 +39,36 @@ def fetch_sales_data():
         print(f"Fehler beim Abrufen der Daten aus database-steel: {err}")
         return None
 
-# Fehlende Zeitwerte in database-dwh ergänzen und ZeitID abrufen
 def get_or_insert_time_id(date_value, dest_cursor):
     """ Prüft, ob die ZeitID existiert, und fügt sie falls nötig ein """
+    date_obj = datetime.strptime(date_value, "%Y-%m-%d") if isinstance(date_value, str) else date_value
+    
+    # Format wie in Zeit.ZeitID (z. B. 2025-01-01:00-00)
+    zeit_id = date_obj.strftime("%Y-%m-%d:00-00")
+
     query_check = "SELECT ZeitID FROM Zeit WHERE ZeitID = %s;"
-    dest_cursor.execute(query_check, (date_value,))
+    dest_cursor.execute(query_check, (zeit_id,))
     result = dest_cursor.fetchone()
 
     if result:
-        return result[0]  # Falls die ZeitID existiert, zurückgeben
+        return result[0]
     else:
-        # Falls nicht vorhanden, Zeitwert mit Standard-Uhrzeit einfügen
-        date_obj = datetime.strptime(date_value, "%Y-%m-%d") if isinstance(date_value, str) else date_value
         insert_query = """
             INSERT INTO Zeit (ZeitID, Datum, Uhrzeit, Jahr, Monat, Q, Wochentag)
             VALUES (%s, %s, %s, %s, %s, %s, %s);
         """
         data_tuple = (
-            date_value,  # ZeitID = Datum
-            date_value,  # Datum
-            "00:00:00",  # Standardwert für Uhrzeit
-            date_obj.year,  # Jahr
-            date_obj.month,  # Monat
-            (date_obj.month - 1) // 3 + 1,  # Quartal (Q)
-            date_obj.strftime("%A")  # Wochentag als Text
+            zeit_id,                     # ZeitID im Format 2025-01-01:00-00
+            date_obj,                    # Datum (als date-Objekt)
+            "00:00:00",                  # Uhrzeit
+            date_obj.year,
+            date_obj.month,
+            (date_obj.month - 1) // 3 + 1,
+            date_obj.strftime("%A")
         )
         dest_cursor.execute(insert_query, data_tuple)
-        return date_value  # Neue ZeitID zurückgeben
+        return zeit_id
+
 
 # Daten in database-dwh Fakt_Sales laden
 def load_sales_data(df):
