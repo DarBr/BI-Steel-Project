@@ -75,7 +75,7 @@ def save_to_db(df):
         if connection.is_connected():
             cursor = connection.cursor()
             insert_query = """
-                INSERT INTO Energiepreise (Energiepreis, ZeitID)
+                INSERT INTO Fakt_Energiepreise (Energiepreis, ZeitID)
                 VALUES (%s, %s)
                 ON DUPLICATE KEY UPDATE Energiepreis = VALUES(Energiepreis);
             """

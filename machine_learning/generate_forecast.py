@@ -89,7 +89,7 @@ def save_forecast_to_db(predictions, next_day):
         forecast_json = json.dumps({"forecast": predictions.tolist()})
         
         cursor.execute("""
-            INSERT INTO Energiepreis_Vorhersage (ZeitID, Vorhersage)
+            INSERT INTO Fakt_Energiepreisvorhersage (ZeitID, Vorhersage)
             VALUES (%s, %s)
             ON DUPLICATE KEY UPDATE Vorhersage = VALUES(Vorhersage);
         """, (forecast_time, forecast_json))
