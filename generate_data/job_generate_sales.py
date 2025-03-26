@@ -35,8 +35,7 @@ def import_auftraege(conn, csv_path_orders):
 
     conn.commit()
 
-    df_remaining = df[df['Bestelldatum'] > today]
-    df_remaining.to_csv(csv_path_orders, index=False)
+   
 
     print("Import der Aufträge abgeschlossen.")
     cursor.close()
@@ -113,9 +112,6 @@ def import_positionen(conn, csv_path_positions):
 
     conn.commit()
     cursor2.close()
-
-    df_remaining = df.drop(index=inserted_indices)
-    df_remaining.to_csv(csv_path_positions, index=False)
 
     print("Import der Positionen abgeschlossen.")
     cursor.close()
@@ -205,6 +201,7 @@ def update_lagerbestand(conn):
     print("Lagerbestand für heute aktualisiert.")
 
 def main():
+    
     try:
         conn = mysql.connector.connect(
             host="13.60.244.59",
@@ -219,7 +216,6 @@ def main():
 
         csv_path_orders = os.path.join(data_dir, "auftraege_6_monate.csv")
         csv_path_positions = os.path.join(data_dir, "Kundenauftragspositionen_exakt.csv")
-
 
         # 1) Aufträge importieren
         import_auftraege(conn, csv_path_orders)
@@ -239,3 +235,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+	
