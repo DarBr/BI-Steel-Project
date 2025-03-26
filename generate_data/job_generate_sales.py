@@ -215,9 +215,11 @@ def main():
         )
 
         script_dir = os.path.dirname(__file__)
+        data_dir = os.path.join(script_dir, "data")  # Verweis auf den "data"-Ordner
 
-        csv_path_orders = os.path.join(script_dir, "auftraege_6_monate.csv")
-        csv_path_positions = os.path.join(script_dir, "Kundenauftragspositionen_exakt.csv")
+        csv_path_orders = os.path.join(data_dir, "auftraege_6_monate.csv")
+        csv_path_positions = os.path.join(data_dir, "Kundenauftragspositionen_exakt.csv")
+
 
         # 1) Aufträge importieren
         import_auftraege(conn, csv_path_orders)
