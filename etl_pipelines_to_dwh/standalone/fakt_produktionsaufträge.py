@@ -166,3 +166,8 @@ if __name__ == "__main__":
         load_production_data(df_production)
     else:
         print("Keine Daten zum Laden gefunden.")
+
+
+"""
+to do: fakt energiepreise, fakt energiepreisvorhersage 
+"""
