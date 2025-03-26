@@ -163,11 +163,11 @@ def main():
         )
 
         # 2) Aufträge importieren (mit Datumsfilter)
-        csv_path_orders = r"C:\Users\morit\Documents\auftraege_6_monate.csv"
+        csv_path_orders = r"C:\Users\morit\Webentwicklung\BI-Steel-Project\Scribts_csv\auftraege_6_monate.csv"
         import_auftraege(conn, csv_path_orders)
 
         # 3) Positionen importieren (inkl. Bestellungen)
-        csv_path_positions = r"C:\Users\morit\Documents\Kundenauftragspositionen_exakt.csv"
+        csv_path_positions = r"C:\Users\morit\Webentwicklung\BI-Steel-Project\Scribts_csv\Kundenauftragspositionen_exakt.csv"
         import_positionen(conn, csv_path_positions)
 
         # 4) Verbindung schließen
