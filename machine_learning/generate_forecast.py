@@ -84,24 +84,27 @@ def save_forecast_to_db(predictions, next_day):
         
         cursor = connection.cursor()
         save_time_to_db(cursor, next_day)
-        
-        forecast_time = next_day.strftime('%Y-%m-%d') + ":00-00"
-        forecast_json = json.dumps({"forecast": predictions.tolist()})
-        
-        cursor.execute("""
-            INSERT INTO Fakt_Energiepreisvorhersage (ZeitID, Vorhersage)
-            VALUES (%s, %s)
-            ON DUPLICATE KEY UPDATE Vorhersage = VALUES(Vorhersage);
-        """, (forecast_time, forecast_json))
-        
+
+        # Speichere jede Stunde als eigene Zeile
+        for hour, value in enumerate(predictions.flatten()):  # `flatten()` für 1D-Array
+            ZeitID = next_day.replace(hour=hour, minute=0, second=0).strftime('%Y-%m-%d:%H') + "-00"
+            
+            cursor.execute("""
+                INSERT INTO Fakt_Energiepreisvorhersage (ZeitID, Vorhersage)
+                VALUES (%s, %s)
+                ON DUPLICATE KEY UPDATE Vorhersage = VALUES(Vorhersage);
+            """, (ZeitID, float(value)))  # 🔥 Hier wird `float(value)` benutzt
+
         connection.commit()
-        print(f"Vorhersage für {forecast_time} erfolgreich gespeichert.")
-        
+        print(f"Vorhersage für {next_day.strftime('%Y-%m-%d')} erfolgreich gespeichert.")
+
         cursor.close()
         connection.close()
         print("Datenbankverbindung geschlossen.")
     except mysql.connector.Error as err:
         print(f"Fehler beim Speichern der Vorhersage: {err}")
+
+
 
 def main():
     print("Starte Prozess...")
