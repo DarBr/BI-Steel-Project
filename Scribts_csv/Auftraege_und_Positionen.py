@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import mysql.connector
 import sys
@@ -162,12 +163,19 @@ def main():
             database="database-steel"
         )
 
+        # =====================================================
+        # Skript, CSV und Positionen liegen im GLEICHEN Ordner
+        # =====================================================
+        script_dir = os.path.dirname(__file__)
+
+        # CSVs heißen genau wie folgt:
+        csv_path_orders = os.path.join(script_dir, "auftraege_6_monate.csv")
+        csv_path_positions = os.path.join(script_dir, "Kundenauftragspositionen_exakt.csv")
+
         # 2) Aufträge importieren (mit Datumsfilter)
-        csv_path_orders = r"C:\Users\morit\Webentwicklung\BI-Steel-Project\Scribts_csv\auftraege_6_monate.csv"
         import_auftraege(conn, csv_path_orders)
 
         # 3) Positionen importieren (inkl. Bestellungen)
-        csv_path_positions = r"C:\Users\morit\Webentwicklung\BI-Steel-Project\Scribts_csv\Kundenauftragspositionen_exakt.csv"
         import_positionen(conn, csv_path_positions)
 
         # 4) Verbindung schließen
