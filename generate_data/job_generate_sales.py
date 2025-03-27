@@ -7,69 +7,48 @@ import random
 import math
 
 def import_auftraege(conn, csv_path_orders):
-    """
-    Liest die Aufträge aus csv_path_orders (AuftragsID, KundenID, Bestelldatum, Auftragsvolumen, Lieferdatum),
-    filtert nur Datensätze mit Bestelldatum <= heute und fügt sie per INSERT IGNORE in tb_Kundenauftrag ein.
-    Anschließend werden die eingefügten Datensätze aus der CSV entfernt.
-    """
     print("=== Starte Import der Aufträge ===")
     cursor = conn.cursor()
 
-    # 1) CSV einlesen, Datumsfelder parsen
     df = pd.read_csv(
         csv_path_orders,
         parse_dates=['Bestelldatum', 'Lieferdatum']
     )
 
-    # 2) Nur Zeilen bis einschließlich heute
     today = pd.Timestamp.today().normalize()
     df_to_insert = df[df['Bestelldatum'] <= today]
 
-    # 3) Insert-Statement
     insert_query = """
         INSERT IGNORE INTO tb_Kundenauftrag
         (AuftragsID, KundenID, Bestelldatum, Auftragsvolumen, Lieferdatum)
         VALUES (%s, %s, %s, %s, %s)
     """
 
-    # 4) Einfügen
     for _, row in df_to_insert.iterrows():
         cursor.execute(insert_query, (
             int(row['AuftragsID']),
             int(row['KundenID']),
             row['Bestelldatum'].strftime('%Y-%m-%d'),
-            float(row['Auftragsvolumen']),  # float => behält .00
+            float(row['Auftragsvolumen']),
             row['Lieferdatum'].strftime('%Y-%m-%d')
         ))
 
     conn.commit()
 
-    # 5) Entferne die eingefügten Zeilen aus der CSV (d. h. Bestelldatum <= heute)
-    df_remaining = df[df['Bestelldatum'] > today]
-    df_remaining.to_csv(csv_path_orders, index=False)
+   
 
     print("Import der Aufträge abgeschlossen.")
     cursor.close()
 
 def import_positionen(conn, csv_path_positions):
-    """
-    Liest die Auftragspositionen aus csv_path_positions (ID, ProduktID, Menge, Preis, AuftragsID),
-    fügt sie per INSERT IGNORE in tb_Kundenauftragspositionen ein (sofern die AuftragsID existiert).
-    Für jede neu eingefügte Position werden automatisch Bestellungen in tb_Bestellung angelegt,
-    basierend auf tb_MaterialZuProdukt (Verhaeltnis).
-    Anschließend werden die eingefügten Positionen aus der CSV entfernt.
-    """
     print("=== Starte Import der Auftragspositionen ===")
     cursor = conn.cursor()
 
-    # 1) CSV einlesen
     df = pd.read_csv(csv_path_positions)
 
-    # 2) Welche AuftragsIDs existieren bereits?
     cursor.execute("SELECT AuftragsID FROM tb_Kundenauftrag")
     existing_orders = set(row[0] for row in cursor.fetchall())
 
-    # 3) Nur Positionen, deren AuftragsID existiert
     df_to_insert = df[df['AuftragsID'].isin(existing_orders)]
 
     insert_query_positions = """
@@ -78,27 +57,21 @@ def import_positionen(conn, csv_path_positions):
         VALUES (%s, %s, %s, %s, %s)
     """
 
-    # Zweiter Cursor für die Bestellungen
     cursor2 = conn.cursor()
-
-    # Indizes, die wir erfolgreich eingefügt haben
     inserted_indices = []
 
     for index, row in df_to_insert.iterrows():
-        # 4) Position einfügen
         cursor.execute(insert_query_positions, (
             int(row['ID']),
             int(row['ProduktID']),
             int(row['Menge']),
-            float(row['Preis']),   # float => behält Nachkommastellen
+            float(row['Preis']),
             int(row['AuftragsID'])
         ))
-
-        # Nur wenn tatsächlich neu eingefügt (rowcount=1)
         if cursor.rowcount == 1:
             inserted_indices.append(index)
 
-            # 5) Bestelldatum aus tb_Kundenauftrag holen
+            # Lieferdatum ableiten
             cursor2.execute("""
                 SELECT Bestelldatum
                 FROM tb_Kundenauftrag
@@ -106,15 +79,12 @@ def import_positionen(conn, csv_path_positions):
             """, (int(row['AuftragsID']),))
             result = cursor2.fetchone()
             if not result:
-                # Sollte eigentlich nie vorkommen, da wir AuftragsID gefiltert haben
                 continue
             bestelldatum = result[0]
-
-            # 6) Lieferdatum = Bestelldatum + random(3..5) Tage
             offset_days = random.randint(3, 5)
             lieferdatum = bestelldatum + timedelta(days=offset_days)
 
-            # 7) tb_MaterialZuProdukt abfragen
+            # tb_MaterialZuProdukt abfragen
             cursor2.execute("""
                 SELECT MaterialID, Verhaeltnis
                 FROM tb_MaterialZuProdukt
@@ -122,16 +92,14 @@ def import_positionen(conn, csv_path_positions):
             """, (int(row['ProduktID']),))
             mat_rows = cursor2.fetchall()
 
-            # 8) Pro Material eine Bestellung anlegen
+            # Bestellung anlegen
             insert_bestellung = """
                 INSERT IGNORE INTO tb_Bestellung
                 (MaterialID, LieferantID, Bestellmenge, Bestelldatum, Lieferdatum)
                 VALUES (%s, %s, %s, %s, %s)
             """
             for (mat_id, verh) in mat_rows:
-                # Menge * Verhaeltnis => aufrunden
                 bestellmenge = math.ceil(int(row['Menge']) * verh)
-                # Zufälliger Lieferant 1..4
                 lieferant_id = random.randint(1, 4)
 
                 cursor2.execute(insert_bestellung, (
@@ -145,16 +113,96 @@ def import_positionen(conn, csv_path_positions):
     conn.commit()
     cursor2.close()
 
-    # 9) Entferne die eingefügten Zeilen aus der CSV
-    df_remaining = df.drop(index=inserted_indices)
-    df_remaining.to_csv(csv_path_positions, index=False)
-
     print("Import der Positionen abgeschlossen.")
     cursor.close()
 
+def update_lagerbestand(conn):
+    """
+    Aktualisiert den Lagerbestand in tb_Lagerbestand, basierend auf:
+      - Bestellungen (tb_Bestellung) mit Lieferdatum=heute -> Zugänge
+      - Kundenaufträge (tb_Kundenauftrag) mit Lieferdatum=heute -> Abgänge
+        (Anhand tb_Kundenauftragspositionen + tb_MaterialZuProdukt)
+
+    Falls am selben Tag Zugänge + Abgänge für dasselbe Material auftreten,
+    wird net addiert/subtrahiert und ein neuer Eintrag für heute angelegt.
+    """
+    print("=== Starte Lagerbestand-Update ===")
+
+    cursor = conn.cursor()
+    today_str = datetime.now().strftime('%Y-%m-%d')
+
+    # 1) Zugänge aus tb_Bestellung (Lieferdatum = heute)
+    cursor.execute("""
+        SELECT MaterialID, SUM(Bestellmenge) AS Zugang
+        FROM tb_Bestellung
+        WHERE DATE(Lieferdatum) = %s
+        GROUP BY MaterialID
+    """, (today_str,))
+    zugang_map = { row[0]: row[1] for row in cursor.fetchall() }
+
+    # 2) Abgänge aus tb_Kundenauftrag + tb_Kundenauftragspositionen + tb_MaterialZuProdukt
+    #    wo tb_Kundenauftrag.Lieferdatum = heute
+    cursor.execute("""
+        SELECT mzu.MaterialID,
+               SUM(kpos.Menge * mzu.Verhaeltnis) AS Abgang
+        FROM tb_Kundenauftragspositionen kpos
+        JOIN tb_Kundenauftrag ka ON kpos.AuftragsID = ka.AuftragsID
+        JOIN tb_MaterialZuProdukt mzu ON kpos.ProduktID = mzu.ProduktID
+        WHERE DATE(ka.Lieferdatum) = %s
+        GROUP BY mzu.MaterialID
+    """, (today_str,))
+    abgang_map = { row[0]: row[1] for row in cursor.fetchall() }
+
+    # Alle betroffenen Materialien (Zugang oder Abgang)
+    all_materials = set(zugang_map.keys()) | set(abgang_map.keys())
+    if not all_materials:
+        print("Heute keine Lagerbewegung (kein Zugang/Abgang).")
+        return
+
+    for mat_id in all_materials:
+        # alten Bestand holen (letzter Eintrag in tb_Lagerbestand)
+        cursor.execute("""
+            SELECT Menge, Mindestbestand
+            FROM tb_Lagerbestand
+            WHERE MaterialID = %s
+            ORDER BY LagerID DESC
+            LIMIT 1
+        """, (mat_id,))
+        row = cursor.fetchone()
+        if row:
+            alter_bestand = row[0]
+            alter_mindest = row[1]
+        else:
+            alter_bestand = 0
+            alter_mindest = 0  # oder falls du anfangs was anderes willst
+
+        zugang = zugang_map.get(mat_id, 0)
+        abgang = abgang_map.get(mat_id, 0)
+
+        # Falls Zugänge + Abgänge am gleichen Tag -> net
+        neuer_bestand = alter_bestand + zugang - abgang
+        # Du könntest abfangen, wenn neuer_bestand < 0 => Engpass?
+
+        # Neuer Eintrag in tb_Lagerbestand
+        insert_lager = """
+            INSERT INTO tb_Lagerbestand
+            (MaterialID, Menge, Mindestbestand, Bestandsdatum)
+            VALUES (%s, %s, %s, %s)
+        """
+        cursor.execute(insert_lager, (
+            mat_id,
+            neuer_bestand,
+            alter_mindest,
+            today_str
+        ))
+
+    conn.commit()
+    cursor.close()
+    print("Lagerbestand für heute aktualisiert.")
+
 def main():
+    
     try:
-        # 1) Verbindung aufbauen
         conn = mysql.connector.connect(
             host="13.60.244.59",
             port=3306,
@@ -163,22 +211,21 @@ def main():
             database="database-steel"
         )
 
-        # =====================================================
-        # Skript, CSV und Positionen liegen im GLEICHEN Ordner
-        # =====================================================
         script_dir = os.path.dirname(__file__)
+        data_dir = os.path.join(script_dir, "data")  # Verweis auf den "data"-Ordner
 
-        # CSVs heißen genau wie folgt:
-        csv_path_orders = os.path.join(script_dir, "auftraege_6_monate.csv")
-        csv_path_positions = os.path.join(script_dir, "Kundenauftragspositionen_exakt.csv")
+        csv_path_orders = os.path.join(data_dir, "auftraege_6_monate.csv")
+        csv_path_positions = os.path.join(data_dir, "Kundenauftragspositionen_exakt.csv")
 
-        # 2) Aufträge importieren (mit Datumsfilter)
+        # 1) Aufträge importieren
         import_auftraege(conn, csv_path_orders)
 
-        # 3) Positionen importieren (inkl. Bestellungen)
+        # 2) Positionen importieren (inkl. Bestellungen)
         import_positionen(conn, csv_path_positions)
 
-        # 4) Verbindung schließen
+        # 3) Lagerbestand aktualisieren
+        update_lagerbestand(conn)
+
         conn.close()
         print("=== Gesamter Import erfolgreich abgeschlossen ===")
 
@@ -188,3 +235,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+	
