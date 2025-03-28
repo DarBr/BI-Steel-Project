@@ -64,8 +64,8 @@ def insert_into_db(data):
         print(f"Fehler: {err}")
 
 if __name__ == "__main__":
-    yesterday = datetime.now() - timedelta(days=1)
-    print(f"Generiere Produktionsaufträge für {yesterday.strftime('%Y-%m-%d')}...")
-    data = generate_production_data(yesterday)
+    today = datetime.now()
+    print(f"Generiere Produktionsaufträge für {today.strftime('%Y-%m-%d')}...")
+    data = generate_production_data(today)
     insert_into_db(data)
     print("Daten erfolgreich eingefügt.")
