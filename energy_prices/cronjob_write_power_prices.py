@@ -109,7 +109,7 @@ def save_to_csv(df):
         print(f"Verzeichnis existiert nicht, wird erstellt: {base_dir}")
         os.makedirs(base_dir)
 
-    # Existierende Daten laden
+    # Existierende Daten laden (falls vorhanden)
     if os.path.exists(filename):
         print(f"Datei existiert, lade bestehende Daten: {filename}")
         existing_df = pd.read_csv(filename, sep=';', header=None, dtype=str)
@@ -117,6 +117,7 @@ def save_to_csv(df):
         print(f"Datei existiert nicht, erstelle neue Datei: {filename}")
         existing_df = pd.DataFrame()
 
+    # Neue Daten vorbereiten
     new_entries = []
     for _, row in df.iterrows():
         # Zeitangaben formatieren
@@ -141,11 +142,17 @@ def save_to_csv(df):
 
     # Überprüfen, ob tatsächlich neue Einträge vorliegen
     if new_entries:
+        # Wenn die Datei noch leer ist, schreibe den Header, bevor die neuen Daten angehängt werden
         with open(filename, 'a', encoding='utf-8') as f:  # 'a' = Anhängen, keine Überschreibung
+            # Wenn die Datei noch leer ist, schreibe den Header
+            if existing_df.empty:
+                f.write("Datum;Startzeit;Zeitzone;Endzeit;Zeitzone;Preis\n")
+            # Füge die neuen Einträge hinzu
             f.writelines([line + "\n" for line in new_entries])  # Mehrere Zeilen anhängen
         print_to_log(f"{len(new_entries)} neue Einträge in CSV gespeichert.")
     else:
         print_to_log("Keine neuen Daten für CSV.")
+
 
 
 if __name__ == "__main__":
