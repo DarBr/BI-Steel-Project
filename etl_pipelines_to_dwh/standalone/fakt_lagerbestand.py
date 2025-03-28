@@ -5,6 +5,7 @@ def daily_snapshot_lagerbestand(conn):
     """
     Erstellt für den heutigen Tag einen Snapshot aller vorhandenen Materialien
     aus tb_Lagerbestand (database-steel). Schreibt in Fakt_Lagerbestand (database-dwh).
+    Falls ein Eintrag bereits existiert, wird dieser aktualisiert.
     """
     cursor = conn.cursor()
 
@@ -34,11 +35,14 @@ def daily_snapshot_lagerbestand(conn):
         cursor.close()
         return
 
-    # 3) Insert in die Faktentabelle (Fakt_Lagerbestand)
+    # 3) Insert mit "ON DUPLICATE KEY UPDATE"
     insert_sql = """
         INSERT INTO `database-dwh`.Fakt_Lagerbestand
             (ZeitID, MaterialID, Menge, Mindestbestand)
         VALUES (%s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+            Menge = VALUES(Menge),
+            Mindestbestand = VALUES(Mindestbestand);
     """
 
     for (material_id, menge, mindestbestand) in rows:
