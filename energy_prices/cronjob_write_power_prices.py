@@ -32,7 +32,7 @@ def save_to_dataframe(data):
         df.rename(columns={'date': 'zeit', 'value': 'preis'}, inplace=True)
         
         # Konvertiere Zeit und konvertiere Zeitzone zu CET
-        df['zeit'] = pd.to_datetime(df['zeit']).dt.tz_convert(timezone('Europe/Vienna'))
+        df['zeit'] = pd.to_datetime(df['zeit'], utc=True).dt.tz_convert('Europe/Vienna')
         
         # Gruppiere nach Stunde
         df_hourly = df.resample('h', on='zeit').mean().reset_index()
