@@ -46,8 +46,11 @@ X = X.reshape((X.shape[0], X.shape[1], 1))
 
 # Train-Test-Split
 train_size = int(len(X) * 0.8)
-X_train, X_test = X[:train_size], X[train_size:]
-y_train, y_test = y[:train_size], y[train_size:]
+val_size = int(len(X) * 0.1)
+
+X_train, X_val, X_test = X[:train_size], X[train_size:train_size+val_size], X[train_size+val_size:]
+y_train, y_val, y_test = y[:train_size], y[train_size:train_size+val_size], y[train_size+val_size:]
+
 
 # Modell laden oder erstellen
 if os.path.exists(model_path):
@@ -64,5 +67,5 @@ else:
 
 # Falls Modell neu erstellt, trainiere es und speichere es
 if not os.path.exists(model_path):  
-    model.fit(X_train, y_train, epochs=10, batch_size=8, validation_data=(X_test, y_test))
+    model.fit(X_train, y_train, epochs=10, batch_size=8, validation_data=(X_val, y_val))
     model.save(model_path)
