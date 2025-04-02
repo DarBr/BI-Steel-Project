@@ -1,11 +1,20 @@
 import mysql.connector
 import pandas as pd
+from dotenv import load_dotenv
+import os
 
-# Verbindungseinstellungen (anpassen!)
-HOST = "13.60.244.59"
-PORT = 3306
-USER = "user"
-PASSWORD = "clientserver"
+# .env-Datei laden
+load_dotenv()
+
+HOST = os.getenv("HOST")
+PORT = int(os.getenv("PORT"))
+DB_USER = os.getenv("DB_USER")
+PASSWORD = os.getenv("PASSWORD")
+DATABASE_SOURCE = os.getenv("DATABASE_SOURCE")
+DATABASE_DEST = os.getenv("DATABASE_DEST")
+
+print(f"HOST={HOST}, USER={DB_USER}, PASSWORD={'*' * len(PASSWORD)}, DATABASE_SOURCE={DATABASE_SOURCE}, DATABASE_DEST={DATABASE_DEST}")
+
 
 def fetch_customer_data():
     """
@@ -16,9 +25,9 @@ def fetch_customer_data():
         source_conn = mysql.connector.connect(
             host=HOST,
             port=PORT,
-            user=USER,
+            user=DB_USER,
             password=PASSWORD,
-            database="database-steel"
+            database=DATABASE_SOURCE
         )
         source_cursor = source_conn.cursor(dictionary=True)
         
@@ -49,9 +58,9 @@ def load_customer_data(df):
         dest_conn = mysql.connector.connect(
             host=HOST,
             port=PORT,
-            user=USER,
+            user=DB_USER,
             password=PASSWORD,
-            database="database-dwh"
+            database=DATABASE_DEST
         )
         dest_cursor = dest_conn.cursor()
 
