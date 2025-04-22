@@ -1,12 +1,18 @@
 import mysql.connector
 import pandas as pd
 import matplotlib.pyplot as plt
+from dotenv import load_dotenv
+import os
 
-# Verbindungseinstellungen (anpassen!)
-HOST = "13.60.244.59"
-PORT = 3306
-USER = "user"
-PASSWORD = "clientserver"
+load_dotenv()
+
+# Verbindungseinstellungen aus der .env-Datei
+HOST = os.getenv("HOST")
+PORT = int(os.getenv("PORT", 3306))
+USER = os.getenv("DB_USER")
+PASSWORD = os.getenv("PASSWORD")
+DATABASE_SOURCE = os.getenv("DATABASE_SOURCE")
+DATABASE_DEST = os.getenv("DATABASE_DEST")
 
 def fetch_production_data():
     """
@@ -19,7 +25,7 @@ def fetch_production_data():
             port=PORT,
             user=USER,
             password=PASSWORD,
-            database="database-steel"
+            database=DATABASE_SOURCE
         )
         source_cursor = source_conn.cursor(dictionary=True)
         
@@ -52,7 +58,7 @@ def load_production_data(df):
             port=PORT,
             user=USER,
             password=PASSWORD,
-            database="database-dwh"
+            database=DATABASE_DEST
         )
         dest_cursor = dest_conn.cursor()
 
@@ -84,8 +90,8 @@ def load_production_data(df):
         for _, row in df.iterrows():
             # Extrahiere Datum und Uhrzeit von der Startzeit
             start_time = row['Startzeit']
-            date_part = start_time.date()  # Extrahiere das Datum
-            time_part = start_time.strftime('%H:%M:%S')  # Extrahiere die Uhrzeit im Format 'HH:MM:SS'
+            date_part = start_time.date() 
+            time_part = start_time.strftime('%H:%M:%S')  
             
             # Erstelle die ZeitID (Format: 'YYYY-MM-DD:HH-MM')
             time_id = f"{date_part}:{time_part[:2]}-{time_part[3:5]}"
@@ -98,8 +104,8 @@ def load_production_data(df):
                 # Falls die ZeitID nicht existiert, füge sie in die Zeit-Tabelle ein
                 year = date_part.year
                 month = date_part.month
-                week = start_time.strftime('%U')  # Wochennummer
-                weekday = start_time.strftime('%A')  # Wochentag
+                week = start_time.strftime('%U')  
+                weekday = start_time.strftime('%A') 
                 
                 # Füge die neue ZeitID in die Zeit-Tabelle ein
                 dest_cursor.execute(query_insert_time, (time_id, date_part, time_part, year, month, week, weekday))
@@ -109,14 +115,13 @@ def load_production_data(df):
             data_tuple = (
                 row['ProduktID'],
                 row['MaschinenID'],
-                time_id,  # Verknüpfung mit ZeitID
+                time_id,  
                 row['Auslastung'],
                 row['Produktionsmenge'],
                 row['Ausschussmenge'],
-                row['Verbrauch']  # NEU: Verbrauch wird gespeichert
+                row['Verbrauch']
             )
             
-            # Füge die Produktionsdaten in die Fakt_Produktionsauftrag Tabelle ein
             dest_cursor.execute(insert_query, data_tuple)
 
         dest_conn.commit()
@@ -132,11 +137,9 @@ def plot_machine_utilization(df):
     """
     Plottet die Auslastung jeder Maschine an einem bestimmten Tag.
     """
-    # Extrahiere die Stunde von der Startzeit und gruppiere nach MaschinenID
     df['Stunde'] = df['Startzeit'].apply(lambda x: x.hour)
     df_grouped = df.groupby(['MaschinenID', 'Stunde']).agg({'Auslastung': 'mean'}).reset_index()
 
-    # Erstelle das Diagramm
     plt.figure(figsize=(10, 6))
     for machine_id in df_grouped['MaschinenID'].unique():
         machine_data = df_grouped[df_grouped['MaschinenID'] == machine_id]
@@ -150,7 +153,6 @@ def plot_machine_utilization(df):
     plt.xticks(range(0, 24, 1))
     plt.tight_layout()
 
-    # Zeige das Diagramm
     plt.show()
     
 if __name__ == "__main__":
@@ -166,8 +168,3 @@ if __name__ == "__main__":
         load_production_data(df_production)
     else:
         print("Keine Daten zum Laden gefunden.")
-
-
-"""
-to do: fakt energiepreise, fakt energiepreisvorhersage 
-"""

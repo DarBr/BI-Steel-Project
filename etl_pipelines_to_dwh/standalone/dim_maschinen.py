@@ -1,27 +1,32 @@
 import mysql.connector
 import pandas as pd
+from dotenv import load_dotenv
+import os
 
-# Verbindungseinstellungen (anpassen!)
-HOST = "13.60.244.59"
-PORT = 3306
-USER = "user"
-PASSWORD = "clientserver"
+# .env-Datei laden
+load_dotenv()
 
+# Verbindungseinstellungen aus .env
+HOST = os.getenv("HOST")
+PORT = int(os.getenv("PORT", 3306))
+USER = os.getenv("DB_USER")
+PASSWORD = os.getenv("PASSWORD")
+DATABASE_SOURCE = os.getenv("DATABASE_SOURCE")
+DATABASE_DEST = os.getenv("DATABASE_DEST")
+
+# Extraktion Maschinendaten
 def fetch_machine_data():
-    """
-    Extrahiert alle relevanten Maschinendaten aus der Quell-Datenbank (database-steel).
-    """
+    print("Starte Extraktion der Maschinendaten...")
     try:
-        # Verbindung zur Quell-Datenbank herstellen
         source_conn = mysql.connector.connect(
             host=HOST,
             port=PORT,
             user=USER,
             password=PASSWORD,
-            database="database-steel"
+            database=DATABASE_SOURCE
         )
         source_cursor = source_conn.cursor(dictionary=True)
-        
+
         query = """
             SELECT MaschinenID, Typ, Wartungsstatus, Verbrauch, Produktionskapazität
             FROM tb_Maschine;
@@ -29,29 +34,27 @@ def fetch_machine_data():
         source_cursor.execute(query)
         result = source_cursor.fetchall()
         df = pd.DataFrame(result)
-        
+
         source_cursor.close()
         source_conn.close()
-        
+
+        print("Maschinendaten erfolgreich extrahiert.")
         return df
 
     except mysql.connector.Error as err:
-        print(f"Fehler beim Abrufen der Daten aus der Quelle: {err}")
+        print(f"Fehler beim Abrufen der Maschinendaten: {err}")
         return None
 
+# Laden der Maschinendaten ins DWH
 def load_machine_data(df):
-    """
-    Lädt die Maschinendaten in die Ziel-Datenbank (database-dwh) in die Tabelle Dim_Maschine.
-    Wenn die MaschinenID bereits existiert, werden die Daten aktualisiert.
-    """
+    print("Lade Maschinendaten in das DWH...")
     try:
-        # Verbindung zur Ziel-Datenbank herstellen
         dest_conn = mysql.connector.connect(
             host=HOST,
             port=PORT,
             user=USER,
             password=PASSWORD,
-            database="database-dwh"
+            database=DATABASE_DEST
         )
         dest_cursor = dest_conn.cursor()
 
@@ -64,34 +67,31 @@ def load_machine_data(df):
                 Wartungsstatus = VALUES(Wartungsstatus),
                 Energieverbrauch = VALUES(Energieverbrauch);
         """
-        
-        # Hier musst du den Standort festlegen. Zum Beispiel: 'Unbekannt'
+
         for _, row in df.iterrows():
+            standort = "Unbekannt"
             data_tuple = (
                 row['MaschinenID'],
                 row['Typ'],
-                "Unbekannt",  # Hier kannst du den Standort nach Bedarf anpassen
+                standort,
                 row['Wartungsstatus'],
-                row['Verbrauch']  # 'Energieverbrauch' anstatt 'Verbrauch' in Dim_Maschine
+                row['Verbrauch']
             )
             dest_cursor.execute(insert_query, data_tuple)
-        
+
         dest_conn.commit()
-        print("Daten wurden erfolgreich in das DWH geladen.")
-        
+        print("Maschinendaten erfolgreich in das DWH geladen.")
+
         dest_cursor.close()
         dest_conn.close()
-    
-    except mysql.connector.Error as err:
-        print(f"Fehler beim Laden der Daten in das DWH: {err}")
 
+    except mysql.connector.Error as err:
+        print(f"Fehler beim Laden der Maschinendaten: {err}")
+
+# Hauptprogramm
 if __name__ == "__main__":
-    # Extraktion der Maschinendaten aus der Quell-Datenbank
     df_machines = fetch_machine_data()
     if df_machines is not None and not df_machines.empty:
-        print("Daten aus der Quell-Datenbank:")
-        print(df_machines)
-        # Laden der Daten in das DWH
         load_machine_data(df_machines)
     else:
-        print("Keine Daten zum Laden gefunden.")
+        print("Keine Maschinendaten zum Laden gefunden.")

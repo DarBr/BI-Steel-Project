@@ -1,28 +1,26 @@
 import mysql.connector
 import pandas as pd
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
-# Verbindungseinstellungen (anpassen!)
-HOST = "13.60.244.59"
-PORT = 3306
-USER = "user"
-PASSWORD = "clientserver"
+# Datenbank-Zugangsdaten
+HOST = os.getenv("HOST")
+PORT = int(os.getenv("PORT"))
+USER = os.getenv("DB_USER")
+PASSWORD = os.getenv("PASSWORD")
+DB_SOURCE = os.getenv("DATABASE_SOURCE")
+DB_DEST = os.getenv("DATABASE_DEST")
 
 # Funktion zum Abrufen von Kundendaten
 def fetch_customer_data():
     try:
         source_conn = mysql.connector.connect(
-            host=HOST, port=PORT, user=USER, password=PASSWORD, database="database-steel"
+            host=HOST, port=PORT, user=USER, password=PASSWORD, database=DB_SOURCE
         )
         source_cursor = source_conn.cursor(dictionary=True)
-        
-        query = """
-            SELECT KundenID, Firma, Straße, PLZ, Stadt, Land
-            FROM tb_Kunde;
-        """
-        source_cursor.execute(query)
-        result = source_cursor.fetchall()
-        df = pd.DataFrame(result)
-        
+        source_cursor.execute("SELECT KundenID, Firma, Straße, PLZ, Stadt, Land FROM tb_Kunde;")
+        df = pd.DataFrame(source_cursor.fetchall())
         source_cursor.close()
         source_conn.close()
         return df
@@ -30,14 +28,12 @@ def fetch_customer_data():
         print(f"Fehler beim Abrufen der Kundendaten: {err}")
         return None
 
-# Funktion zum Laden von Kundendaten
 def load_customer_data(df):
     try:
         dest_conn = mysql.connector.connect(
-            host=HOST, port=PORT, user=USER, password=PASSWORD, database="database-dwh"
+            host=HOST, port=PORT, user=USER, password=PASSWORD, database=DB_DEST
         )
         dest_cursor = dest_conn.cursor()
-
         insert_query = """
             INSERT INTO Dim_Kunde (KundenID, Firma, Straße, PLZ, Stadt, Land)
             VALUES (%s, %s, %s, %s, %s, %s)
@@ -49,50 +45,37 @@ def load_customer_data(df):
                 Land = VALUES(Land);
         """
         for _, row in df.iterrows():
-            data_tuple = (
+            dest_cursor.execute(insert_query, (
                 row['KundenID'], row['Firma'], row['Straße'], row['PLZ'], row['Stadt'], row['Land']
-            )
-            dest_cursor.execute(insert_query, data_tuple)
-        
+            ))
         dest_conn.commit()
-        print("Kundendaten wurden erfolgreich in das DWH geladen.")
-        
+        print("Kundendaten erfolgreich geladen.")
         dest_cursor.close()
         dest_conn.close()
     except mysql.connector.Error as err:
         print(f"Fehler beim Laden der Kundendaten: {err}")
 
-# Funktion zum Abrufen von Maschinendaten
 def fetch_machine_data():
     try:
-        source_conn = mysql.connector.connect(
-            host=HOST, port=PORT, user=USER, password=PASSWORD, database="database-steel"
+        conn = mysql.connector.connect(
+            host=HOST, port=PORT, user=USER, password=PASSWORD, database=DB_SOURCE
         )
-        source_cursor = source_conn.cursor(dictionary=True)
-        
-        query = """
-            SELECT MaschinenID, Typ, Wartungsstatus, Verbrauch, Produktionskapazität
-            FROM tb_Maschine;
-        """
-        source_cursor.execute(query)
-        result = source_cursor.fetchall()
-        df = pd.DataFrame(result)
-        
-        source_cursor.close()
-        source_conn.close()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT MaschinenID, Typ, Wartungsstatus, Verbrauch, Produktionskapazität FROM tb_Maschine;")
+        df = pd.DataFrame(cursor.fetchall())
+        cursor.close()
+        conn.close()
         return df
     except mysql.connector.Error as err:
         print(f"Fehler beim Abrufen der Maschinendaten: {err}")
         return None
 
-# Funktion zum Laden von Maschinendaten
 def load_machine_data(df):
     try:
-        dest_conn = mysql.connector.connect(
-            host=HOST, port=PORT, user=USER, password=PASSWORD, database="database-dwh"
+        conn = mysql.connector.connect(
+            host=HOST, port=PORT, user=USER, password=PASSWORD, database=DB_DEST
         )
-        dest_cursor = dest_conn.cursor()
-
+        cursor = conn.cursor()
         insert_query = """
             INSERT INTO Dim_Maschine (MaschinenID, Typ, Standort, Wartungsstatus, Energieverbrauch)
             VALUES (%s, %s, %s, %s, %s)
@@ -103,50 +86,37 @@ def load_machine_data(df):
                 Energieverbrauch = VALUES(Energieverbrauch);
         """
         for _, row in df.iterrows():
-            data_tuple = (
+            cursor.execute(insert_query, (
                 row['MaschinenID'], row['Typ'], "Unbekannt", row['Wartungsstatus'], row['Verbrauch']
-            )
-            dest_cursor.execute(insert_query, data_tuple)
-        
-        dest_conn.commit()
-        print("Maschinendaten wurden erfolgreich in das DWH geladen.")
-        
-        dest_cursor.close()
-        dest_conn.close()
+            ))
+        conn.commit()
+        print("Maschinendaten erfolgreich geladen.")
+        cursor.close()
+        conn.close()
     except mysql.connector.Error as err:
         print(f"Fehler beim Laden der Maschinendaten: {err}")
 
-# Funktion zum Abrufen von Materialdaten
 def fetch_material_data():
     try:
-        source_conn = mysql.connector.connect(
-            host=HOST, port=PORT, user=USER, password=PASSWORD, database="database-steel"
+        conn = mysql.connector.connect(
+            host=HOST, port=PORT, user=USER, password=PASSWORD, database=DB_SOURCE
         )
-        source_cursor = source_conn.cursor(dictionary=True)
-        
-        query = """
-            SELECT MaterialID, Name, Einheit
-            FROM tb_Material;
-        """
-        source_cursor.execute(query)
-        result = source_cursor.fetchall()
-        df = pd.DataFrame(result)
-        
-        source_cursor.close()
-        source_conn.close()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT MaterialID, Name, Einheit FROM tb_Material;")
+        df = pd.DataFrame(cursor.fetchall())
+        cursor.close()
+        conn.close()
         return df
     except mysql.connector.Error as err:
         print(f"Fehler beim Abrufen der Materialdaten: {err}")
         return None
 
-# Funktion zum Laden von Materialdaten
 def load_material_data(df):
     try:
-        dest_conn = mysql.connector.connect(
-            host=HOST, port=PORT, user=USER, password=PASSWORD, database="database-dwh"
+        conn = mysql.connector.connect(
+            host=HOST, port=PORT, user=USER, password=PASSWORD, database=DB_DEST
         )
-        dest_cursor = dest_conn.cursor()
-
+        cursor = conn.cursor()
         insert_query = """
             INSERT INTO Dim_Material (MaterialID, Materialname, Einheit)
             VALUES (%s, %s, %s)
@@ -155,50 +125,37 @@ def load_material_data(df):
                 Einheit = VALUES(Einheit);
         """
         for _, row in df.iterrows():
-            data_tuple = (
+            cursor.execute(insert_query, (
                 row['MaterialID'], row['Name'], row['Einheit']
-            )
-            dest_cursor.execute(insert_query, data_tuple)
-        
-        dest_conn.commit()
-        print("Materialdaten wurden erfolgreich in das DWH geladen.")
-        
-        dest_cursor.close()
-        dest_conn.close()
+            ))
+        conn.commit()
+        print("Materialdaten erfolgreich geladen.")
+        cursor.close()
+        conn.close()
     except mysql.connector.Error as err:
         print(f"Fehler beim Laden der Materialdaten: {err}")
 
-# Funktion zum Abrufen von Produktdaten
 def fetch_product_data():
     try:
-        source_conn = mysql.connector.connect(
-            host=HOST, port=PORT, user=USER, password=PASSWORD, database="database-steel"
+        conn = mysql.connector.connect(
+            host=HOST, port=PORT, user=USER, password=PASSWORD, database=DB_SOURCE
         )
-        source_cursor = source_conn.cursor(dictionary=True)
-        
-        query = """
-            SELECT ProduktID, Name, Produkttyp, PreisProEinheit
-            FROM tb_Produkt;
-        """
-        source_cursor.execute(query)
-        result = source_cursor.fetchall()
-        df = pd.DataFrame(result)
-        
-        source_cursor.close()
-        source_conn.close()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT ProduktID, Name, Produkttyp, PreisProEinheit FROM tb_Produkt;")
+        df = pd.DataFrame(cursor.fetchall())
+        cursor.close()
+        conn.close()
         return df
     except mysql.connector.Error as err:
         print(f"Fehler beim Abrufen der Produktdaten: {err}")
         return None
 
-# Funktion zum Laden von Produktdaten
 def load_product_data(df):
     try:
-        dest_conn = mysql.connector.connect(
-            host=HOST, port=PORT, user=USER, password=PASSWORD, database="database-dwh"
+        conn = mysql.connector.connect(
+            host=HOST, port=PORT, user=USER, password=PASSWORD, database=DB_DEST
         )
-        dest_cursor = dest_conn.cursor()
-
+        cursor = conn.cursor()
         insert_query = """
             INSERT INTO Dim_Produkt (ProduktID, Name, Produkttyp, PreisProEinheit)
             VALUES (%s, %s, %s, %s)
@@ -208,24 +165,20 @@ def load_product_data(df):
                 PreisProEinheit = VALUES(PreisProEinheit);
         """
         for _, row in df.iterrows():
-            data_tuple = (
+            cursor.execute(insert_query, (
                 row['ProduktID'], row['Name'], row['Produkttyp'], row['PreisProEinheit']
-            )
-            dest_cursor.execute(insert_query, data_tuple)
-        
-        dest_conn.commit()
-        print("Produktdaten wurden erfolgreich in das DWH geladen.")
-        
-        dest_cursor.close()
-        dest_conn.close()
+            ))
+        conn.commit()
+        print("Produktdaten erfolgreich geladen.")
+        cursor.close()
+        conn.close()
     except mysql.connector.Error as err:
         print(f"Fehler beim Laden der Produktdaten: {err}")
 
-# Hauptfunktion für die Ausführung der gesamten Aufgabe
+# Hauptfunktion
 if __name__ == "__main__":
     print("Starte Extraktion und Laden der Daten...")
 
-    # Extrahieren und Laden der Daten für alle Tabellen
     df_customers = fetch_customer_data()
     if df_customers is not None and not df_customers.empty:
         load_customer_data(df_customers)
@@ -242,4 +195,4 @@ if __name__ == "__main__":
     if df_products is not None and not df_products.empty:
         load_product_data(df_products)
 
-    print("Daten wurden erfolgreich verarbeitet.")
+    print("ETL-Prozess abgeschlossen.")

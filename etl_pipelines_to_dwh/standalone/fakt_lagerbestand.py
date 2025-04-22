@@ -1,5 +1,18 @@
 import mysql.connector
 from datetime import datetime
+from dotenv import load_dotenv
+import os
+
+# .env-Datei laden
+load_dotenv()
+
+# Verbindungseinstellungen aus der .env-Datei
+HOST = os.getenv("HOST")
+PORT = int(os.getenv("PORT", 3306))
+USER = os.getenv("DB_USER")
+PASSWORD = os.getenv("PASSWORD")  # Hier wird 'PASSWORD' verwendet
+DATABASE_SOURCE = os.getenv("DATABASE_SOURCE")
+DATABASE_DEST = os.getenv("DATABASE_DEST")
 
 def daily_snapshot_lagerbestand(conn):
     """
@@ -11,16 +24,15 @@ def daily_snapshot_lagerbestand(conn):
 
     # 1) Heutiges Datum
     today = datetime.now().date()
-    # Format für ZeitID, z. B. "2025-03-28:00-00"
     zeitid = today.strftime("%Y-%m-%d:00-00")
 
     # 2) Pro Material den letzten bekannten Datensatz (<= heute) ermitteln
-    select_sql = """
+    select_sql = f"""
         SELECT lb.MaterialID, lb.Menge, lb.Mindestbestand
-        FROM `database-steel`.tb_Lagerbestand lb
+        FROM `{DATABASE_SOURCE}`.tb_Lagerbestand lb
         JOIN (
             SELECT MaterialID, MAX(Bestandsdatum) AS MaxDatum
-            FROM `database-steel`.tb_Lagerbestand
+            FROM `{DATABASE_SOURCE}`.tb_Lagerbestand
             WHERE Bestandsdatum <= %s
             GROUP BY MaterialID
         ) t 
@@ -36,8 +48,8 @@ def daily_snapshot_lagerbestand(conn):
         return
 
     # 3) Insert mit "ON DUPLICATE KEY UPDATE"
-    insert_sql = """
-        INSERT INTO `database-dwh`.Fakt_Lagerbestand
+    insert_sql = f"""
+        INSERT INTO `{DATABASE_DEST}`.Fakt_Lagerbestand
             (ZeitID, MaterialID, Menge, Mindestbestand)
         VALUES (%s, %s, %s, %s)
         ON DUPLICATE KEY UPDATE
@@ -53,13 +65,12 @@ def daily_snapshot_lagerbestand(conn):
     print(f"Täglicher Snapshot in Fakt_Lagerbestand für {zeitid} abgeschlossen.")
 
 def main():
-    # Verbindung zur DB (keine bestimmte 'database=' nötig, 
-    # da wir per Schema-Name auf die Tabellen zugreifen)
+    # Verbindung zur Datenbank herstellen
     conn = mysql.connector.connect(
-        host="13.60.244.59",
-        port=3306,
-        user="user",
-        password="clientserver"
+        host=HOST,
+        port=PORT,
+        user=USER,
+        password=PASSWORD
     )
 
     daily_snapshot_lagerbestand(conn)

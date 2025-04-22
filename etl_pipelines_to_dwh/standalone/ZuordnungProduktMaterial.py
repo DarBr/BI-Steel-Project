@@ -1,11 +1,18 @@
 import mysql.connector
 import pandas as pd
+from dotenv import load_dotenv
+import os
 
-# Verbindungseinstellungen (anpassen!)
-HOST = "13.60.244.59"
-PORT = 3306
-USER = "user"
-PASSWORD = "clientserver"
+# Lädt die Umgebungsvariablen aus der .env Datei
+load_dotenv()
+
+# Verbindungseinstellungen aus den Umgebungsvariablen
+HOST = os.getenv("HOST")
+PORT = int(os.getenv("PORT", 3306))  # Standardwert 3306 für MySQL
+USER = os.getenv("DB_USER")
+PASSWORD = os.getenv("PASSWORD")  # Hier ist das Passwort (nicht DB_PASSWORD, sondern PASSWORD)
+DATABASE_SOURCE = os.getenv("DATABASE_SOURCE")
+DATABASE_DEST = os.getenv("DATABASE_DEST")
 
 def fetch_material_data():
     """
@@ -17,7 +24,7 @@ def fetch_material_data():
             port=PORT,
             user=USER,
             password=PASSWORD,
-            database="database-steel"
+            database=DATABASE_SOURCE  # Hier wird die Quell-Datenbank genutzt
         )
         source_cursor = source_conn.cursor(dictionary=True)
         
@@ -48,7 +55,7 @@ def load_material_data(df):
             port=PORT,
             user=USER,
             password=PASSWORD,
-            database="database-dwh"
+            database=DATABASE_DEST  # Hier wird die Ziel-Datenbank genutzt
         )
         dest_cursor = dest_conn.cursor()
         
@@ -75,14 +82,13 @@ def load_material_data(df):
     
     except mysql.connector.Error as err:
         print(f"Fehler beim Laden der Daten in das DWH: {err}")
-        
+
+# Hauptablauf
 if __name__ == "__main__":
-    # Extraktion der Materialdaten aus der Quell-Datenbank
     df_material = fetch_material_data()
     if df_material is not None and not df_material.empty:
         print("Daten aus der Quell-Datenbank:")
         print(df_material)
-        # Laden der Daten in das DWH
         load_material_data(df_material)
     else:
         print("Keine Daten zum Laden gefunden.")

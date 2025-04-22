@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 from sqlalchemy import create_engine
 import pytz
 from pytz import timezone
+from dotenv import load_dotenv
+load_dotenv()
 
 # Umleitungen von print in eine Datei (Standardausgabe) im Cronjob
 def print_to_log(message):
@@ -65,11 +67,11 @@ def save_time_to_db(cursor, timestamp):
 def save_to_db(df):
     try:
         connection = mysql.connector.connect(
-            host="13.60.244.59",
-            port=3306,
-            user="user",
-            password="clientserver",
-            database="database-dwh"
+            host=os.getenv("HOST"),
+            port=int(os.getenv("PORT")),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("PASSWORD"),
+            database=os.getenv("DATABASE_DEST")
         )
         
         if connection.is_connected():

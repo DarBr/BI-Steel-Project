@@ -13,9 +13,6 @@ PASSWORD = os.getenv("PASSWORD")
 DATABASE_SOURCE = os.getenv("DATABASE_SOURCE")
 DATABASE_DEST = os.getenv("DATABASE_DEST")
 
-print(f"HOST={HOST}, USER={DB_USER}, PASSWORD={'*' * len(PASSWORD)}, DATABASE_SOURCE={DATABASE_SOURCE}, DATABASE_DEST={DATABASE_DEST}")
-
-
 def fetch_customer_data():
     """
     Extrahiert alle relevanten Kundendaten aus der Quell-Datenbank (database-steel).
