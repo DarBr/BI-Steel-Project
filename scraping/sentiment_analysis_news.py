@@ -5,6 +5,10 @@ from textblob import TextBlob
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 import re
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 # Live-RSS-Feed der Tagesschau
 RSS_URL = 'https://www.tagesschau.de/xml/rss2'
@@ -38,11 +42,11 @@ month_mapping = {
 
 # Datenbankverbindung
 DB_CONFIG = {
-    "host": "13.60.244.59",
-    "port": 3306,
-    "user": "user",
-    "password": "clientserver",
-    "database": "database-dwh"
+    "host": os.getenv("HOST"),
+    "port": int(os.getenv("PORT")),
+    "user": os.getenv("DB_USER"),
+    "password": os.getenv("PASSWORD"),
+    "database": os.getenv("DATABASE_DEST") 
 }
 
 def analyze_sentiment(text):

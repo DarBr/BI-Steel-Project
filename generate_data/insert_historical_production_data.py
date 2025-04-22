@@ -1,6 +1,9 @@
 import mysql.connector
 import random
 from datetime import datetime, timedelta
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 def generate_production_data(start_date, num_days):
     """Erstellt Produktionsaufträge für die angegebene Anzahl von Tagen."""
@@ -23,9 +26,9 @@ def generate_production_data(start_date, num_days):
             kapazitaet = details['kapazitaet']
             verbrauch_pro_tonne = details['verbrauch']  # Verbrauch pro Stunde für 1 Tonne
 
-            # Definiere Produktwechselzeiten (drei Schichten: 00:00, 08:00, 16:00)
+            # drei Schichten: 00:00, 08:00, 16:00
             schichtwechsel = [0, 8, 16]
-            produkt_id = random.choice(produkte)  # Anfangsprodukt setzen
+            produkt_id = random.choice(produkte) 
 
             for hour in range(24):
                 startzeit = datetime(date.year, date.month, date.day, hour, 0, 0)
@@ -38,16 +41,10 @@ def generate_production_data(start_date, num_days):
                 maschinen_betriebsstunden[maschine] += 1
                 if 2000 <= maschinen_betriebsstunden[maschine] <= 4000:
                     # Wartung für 8 Stunden
-                    if hour < 8:
-                        auslastung = 0
-                        produktionsmenge = 0
-                        ausschussmenge = 0
-                        verbrauch = 0
-                    else:
-                        auslastung = 0
-                        produktionsmenge = 0
-                        ausschussmenge = 0
-                        verbrauch = 0
+                    auslastung = 0
+                    produktionsmenge = 0
+                    ausschussmenge = 0
+                    verbrauch = 0
                 else:
                     # Auslastung je nach Uhrzeit variieren
                     if 10 <= hour < 16:
@@ -66,13 +63,13 @@ def generate_production_data(start_date, num_days):
 
                 # Erstelle den Produktionsauftrag
                 auftraege.append((
-                    maschine,           # MaschinenID
-                    startzeit,          # Startzeit des Produktionsauftrags
-                    produktionsmenge,   # Produktionsmenge
-                    ausschussmenge,     # Ausschussmenge
-                    produkt_id,         # ProduktID
-                    auslastung,         # Auslastung in Prozent
-                    verbrauch           # Verbrauch in kWh
+                    maschine,           
+                    startzeit,          
+                    produktionsmenge,   
+                    ausschussmenge,    
+                    produkt_id,        
+                    auslastung,         
+                    verbrauch          
                 ))
     
     return auftraege
@@ -81,11 +78,11 @@ def insert_into_db(data):
     """Fügt Produktionsdaten in die Datenbank ein."""
     try:
         connection = mysql.connector.connect(
-            host="13.60.244.59",
-            port=3306,
-            user="user",
-            password="clientserver",
-            database="database-steel"
+            host=os.getenv("HOST"),
+            port=int(os.getenv("PORT")),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("PASSWORD"),
+            database=os.getenv("DATABASE_SOURCE")
         )
         cursor = connection.cursor()
         

@@ -106,7 +106,7 @@ plt.xlabel('Stunde des Tages')
 plt.ylabel('Durchschnittlicher Spotpreis (ct/kWh)')
 plt.title('Durchschnittlicher Spotpreis pro Stunde des Tages')
 plt.grid(True)
-plt.xticks(range(0, 24))  # Zeige alle Stunden von 0 bis 23 an
+plt.xticks(range(0, 24)) 
 plt.show()
 
 # 6. Autokorrelation der Spotpreise für die ersten 14 Tage (336 Lag)

@@ -1,3 +1,4 @@
+from dotenv import load_dotenv
 import pandas as pd
 import numpy as np
 import os
@@ -7,6 +8,7 @@ from datetime import datetime, timedelta
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import load_model
 from tensorflow.keras.losses import MeanSquaredError
+load_dotenv()
 
 # Dynamische Pfade
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -74,26 +76,26 @@ def save_forecast_to_db(predictions, next_day):
     try:
         print("Verbinde mit der Datenbank...")
         connection = mysql.connector.connect(
-            host="13.60.244.59",
-            port=3306,
-            user="user",
-            password="clientserver",
-            database="database-dwh"
-        )
+        host=os.getenv("HOST"),
+        port=int(os.getenv("PORT")),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("PASSWORD"),
+        database=os.getenv("DATABASE_DEST")
+    )
         print("Verbindung erfolgreich hergestellt.")
         
         cursor = connection.cursor()
         save_time_to_db(cursor, next_day)
 
         # Speichere jede Stunde als eigene Zeile
-        for hour, value in enumerate(predictions.flatten()):  # `flatten()` für 1D-Array
+        for hour, value in enumerate(predictions.flatten()):  
             ZeitID = next_day.replace(hour=hour, minute=0, second=0).strftime('%Y-%m-%d:%H') + "-00"
             
             cursor.execute("""
                 INSERT INTO Fakt_Energiepreisvorhersage (ZeitID, Vorhersage)
                 VALUES (%s, %s)
                 ON DUPLICATE KEY UPDATE Vorhersage = VALUES(Vorhersage);
-            """, (ZeitID, float(value)))  # 🔥 Hier wird `float(value)` benutzt
+            """, (ZeitID, float(value))) 
 
         connection.commit()
         print(f"Vorhersage für {next_day.strftime('%Y-%m-%d')} erfolgreich gespeichert.")

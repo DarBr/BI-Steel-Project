@@ -65,7 +65,6 @@ else:
     ])
     model.compile(optimizer='adam', loss='mse')
 
-# Falls Modell neu erstellt, trainiere es und speichere es
 if not os.path.exists(model_path):  
     model.fit(X_train, y_train, epochs=10, batch_size=8, validation_data=(X_val, y_val))
     model.save(model_path)

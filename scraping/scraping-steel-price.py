@@ -1,3 +1,5 @@
+from dotenv import load_dotenv
+import os
 import requests
 import re
 import json
@@ -5,6 +7,7 @@ import mysql.connector
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone, timedelta
 import pytz
+load_dotenv()
 
 # Funktion zum Ausgeben von Logs
 def print_to_log(message):
@@ -44,13 +47,13 @@ def fetch_hrc_price():
 def save_to_db(price):
     try:
         connection = mysql.connector.connect(
-            host="13.60.244.59",
-            port=3306,
-            user="user",
-            password="clientserver",
-            database="database-dwh"
-        )
-        
+        host=os.getenv("HOST"),
+        port=int(os.getenv("PORT")),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("PASSWORD"),
+        database=os.getenv("DATABASE_DEST")
+    )
+
         if connection.is_connected():
             cursor = connection.cursor()
 
@@ -60,12 +63,12 @@ def save_to_db(price):
             rounded_datetime = current_datetime.replace(minute=0, second=0, microsecond=0)
 
             # Extrahiere die vollen Stunden (ZeitID)
-            zeit_id = rounded_datetime.strftime('%Y-%m-%d:%H') + "-00"  # ZeitID als vollen Zeitstempel (z. B. '2025-03-08:12-00')
+            zeit_id = rounded_datetime.strftime('%Y-%m-%d:%H') + "-00"  
             current_date = rounded_datetime.date()
             jahr = current_date.year
             monat = current_date.month
-            quartal = (monat - 1) // 3 + 1  # Berechnung des Quartals
-            wochentag = current_date.strftime("%A")  # Wochentag (z. B. 'Montag')
+            quartal = (monat - 1) // 3 + 1  
+            wochentag = current_date.strftime("%A") 
             
             # Check if ZeitID exists in Zeit table
             check_zeit_query = "SELECT COUNT(*) FROM Zeit WHERE ZeitID = %s"
@@ -84,7 +87,7 @@ def save_to_db(price):
             else:
                 print_to_log("ZeitID existiert bereits in Zeit.")
             
-            # Jetzt die Daten in Dim_Marktpreise einfügen mit der ZeitID
+            # Daten in Dim_Marktpreise einfügen mit der ZeitID
             materialname = "HRC Stahl"
             einheit = "USD/T"
             insert_query = """

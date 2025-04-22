@@ -5,6 +5,9 @@ import sys
 from datetime import datetime, timedelta
 import random
 import math
+from dotenv import load_dotenv
+load_dotenv()
+
 
 def import_auftraege(conn, csv_path_orders):
     print("=== Starte Import der Aufträge ===")
@@ -131,7 +134,7 @@ def update_lagerbestand(conn):
     cursor = conn.cursor()
     today_str = datetime.now().strftime('%Y-%m-%d')
 
-    # 1) Zugänge aus tb_Bestellung (Lieferdatum = heute)
+    # 1) Zugänge
     cursor.execute("""
         SELECT MaterialID, SUM(Bestellmenge) AS Zugang
         FROM tb_Bestellung
@@ -140,8 +143,7 @@ def update_lagerbestand(conn):
     """, (today_str,))
     zugang_map = { row[0]: row[1] for row in cursor.fetchall() }
 
-    # 2) Abgänge aus tb_Kundenauftrag + tb_Kundenauftragspositionen + tb_MaterialZuProdukt
-    #    wo tb_Kundenauftrag.Lieferdatum = heute
+    # 2) Abgänge
     cursor.execute("""
         SELECT mzu.MaterialID,
                SUM(kpos.Menge * mzu.Verhaeltnis) AS Abgang
@@ -174,14 +176,13 @@ def update_lagerbestand(conn):
             alter_mindest = row[1]
         else:
             alter_bestand = 0
-            alter_mindest = 0  # oder falls du anfangs was anderes willst
+            alter_mindest = 0 
 
         zugang = zugang_map.get(mat_id, 0)
         abgang = abgang_map.get(mat_id, 0)
 
-        # Falls Zugänge + Abgänge am gleichen Tag -> net
         neuer_bestand = alter_bestand + zugang - abgang
-        # Du könntest abfangen, wenn neuer_bestand < 0 => Engpass?
+        
 
         # Neuer Eintrag in tb_Lagerbestand
         insert_lager = """
@@ -204,12 +205,12 @@ def main():
     
     try:
         conn = mysql.connector.connect(
-            host="13.60.244.59",
-            port=3306,
-            user="user",
-            password="clientserver",
-            database="database-steel"
-        )
+            host=os.getenv("HOST"),
+            port=int(os.getenv("PORT")),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("PASSWORD"),
+            database=os.getenv("DATABASE_SOURCE")
+    )
 
         script_dir = os.path.dirname(__file__)
         data_dir = os.path.join(script_dir, "data")  # Verweis auf den "data"-Ordner

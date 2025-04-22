@@ -1,6 +1,9 @@
 import mysql.connector
 import random
 from datetime import datetime, timedelta
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 def generate_production_data(date):
     """Erstellt Produktionsaufträge für einen einzelnen Tag."""
@@ -40,11 +43,11 @@ def insert_into_db(data):
     """Fügt Produktionsdaten in die Datenbank ein."""
     try:
         connection = mysql.connector.connect(
-            host="13.60.244.59",
-            port=3306,
-            user="user",
-            password="clientserver",
-            database="database-steel"
+            host=os.getenv("HOST"),
+            port=int(os.getenv("PORT")),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("PASSWORD"),
+            database=os.getenv("DATABASE_SOURCE")
         )
         cursor = connection.cursor()
         
