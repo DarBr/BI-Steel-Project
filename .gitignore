@@ -1,19 +1,19 @@
-# Ignoriere das virtuelle Environment
+
 venv/
 
-# Ignoriere *.pyc-Dateien und andere nicht benötigte Dateien
+
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# Ignoriere alle .log-Dateien
+
 *.log
 
-# Ignoriere den Ordner für Logs
+
 logs/
 
 *.h5
 
-# .gitignore
+
 .env
