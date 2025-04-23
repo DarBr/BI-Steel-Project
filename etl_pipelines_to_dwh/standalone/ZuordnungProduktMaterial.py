@@ -8,9 +8,9 @@ load_dotenv()
 
 # Verbindungseinstellungen aus den Umgebungsvariablen
 HOST = os.getenv("HOST")
-PORT = int(os.getenv("PORT", 3306))  # Standardwert 3306 für MySQL
+PORT = int(os.getenv("PORT", 3306)) 
 USER = os.getenv("DB_USER")
-PASSWORD = os.getenv("PASSWORD")  # Hier ist das Passwort (nicht DB_PASSWORD, sondern PASSWORD)
+PASSWORD = os.getenv("PASSWORD") 
 DATABASE_SOURCE = os.getenv("DATABASE_SOURCE")
 DATABASE_DEST = os.getenv("DATABASE_DEST")
 
@@ -24,7 +24,7 @@ def fetch_material_data():
             port=PORT,
             user=USER,
             password=PASSWORD,
-            database=DATABASE_SOURCE  # Hier wird die Quell-Datenbank genutzt
+            database=DATABASE_SOURCE 
         )
         source_cursor = source_conn.cursor(dictionary=True)
         
@@ -55,7 +55,7 @@ def load_material_data(df):
             port=PORT,
             user=USER,
             password=PASSWORD,
-            database=DATABASE_DEST  # Hier wird die Ziel-Datenbank genutzt
+            database=DATABASE_DEST 
         )
         dest_cursor = dest_conn.cursor()
         
