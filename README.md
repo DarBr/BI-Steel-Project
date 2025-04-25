@@ -56,18 +56,13 @@ DATABASE_SOURCE=database-steel
 
 # Data Warehouse (Ziel-DB)
 DATABASE_DEST=database-dwh
-
-# Alternativ (wenn Module DB_HOST/DB_PORT nutzen)
-DB_HOST=your_source_db_host
-DB_PORT=3306
-DB_PASSWORD=your_password
 ```
 
 ## Installation
 1. Projekt klonen:
 ```bash
-git clone https://github.com/username/steel-dwh-analytics.git
-cd steel-dwh-analytics
+git clone https://github.com/DarBr/BI-Steel-Project.git
+cd BI-Steel-Project
 ```
 2. Virtuelle Umgebung erstellen und aktivieren:
 ```bash
