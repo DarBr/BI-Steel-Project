@@ -65,18 +65,18 @@ DB_PASSWORD=your_password
 
 ## Installation
 1. Projekt klonen:
-   ```bash
+```bash
 git clone https://github.com/username/steel-dwh-analytics.git
 cd steel-dwh-analytics
 ```
 2. Virtuelle Umgebung erstellen und aktivieren:
-   ```bash
+```bash
 python -m venv venv
 source venv/bin/activate    # Linux/Mac
 venv\Scripts\activate.bat   # Windows
 ```
 3. Abhängigkeiten installieren:
-   ```bash
+```bash
 pip install -r requirements.txt
 ```
 
