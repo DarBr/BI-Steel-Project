@@ -25,8 +25,6 @@ Diese Kombination aus ETL-, Analyse‑ und Integrationskomponenten ermöglicht d
 4. [Skripte & Nutzung](#skripte--nutzung)
    - [Dimensionstabellen-ETL](#dimensionstabellen-etl)
    - [Fakten-ETL](#fakten-etl)
-   - [Auftrags-&Positions-Import](#auftrags-&positions-import)
-   - [Lagerbestand-Update](#lagerbestand-update)
    - [Strompreisanalyse](#strompreisanalyse)
    - [Modelltraining&-eval](#modelltraining&-eval)
    - [Prognosespeicherung](#prognosespeicherung)
@@ -94,7 +92,7 @@ Explorative Analyse historischer Spotmarktpreise.
 python analysis.py
 ```
 
-### Modelltraining und -eval
+### Modelltraining&-eval
 Trainiert bzw. lädt das LSTM-Modell für Strompreisprognosen:
 ```bash
 # Training (falls kein Modell vorhanden)
