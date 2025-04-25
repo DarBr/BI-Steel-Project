@@ -25,10 +25,10 @@ Diese Kombination aus ETL-, Analyse‑ und Integrationskomponenten ermöglicht d
 4. [Skripte & Nutzung](#skripte--nutzung)
    - [Dimensionstabellen-ETL](#dimensionstabellen-etl)
    - [Fakten-ETL](#fakten-etl)
-   - [Auftrags- & Positions-Import](#auftrags--positions-import)
+   - [Auftrags- und Positions-Import](#auftrags-und-positions-import)
    - [Lagerbestand-Update](#lagerbestand-update)
    - [Strompreisanalyse](#strompreisanalyse)
-   - [Modelltraining & -eval](#modelltraining--eval)
+   - [Modelltraining und -eval](#modelltraining-und-eval)
    - [Prognosespeicherung](#prognosespeicherung)
    - [HRC-Stahlpreis-Fetcher](#hrc-stahlpreis-fetcher)
    - [Wirtschaftsnachrichten-Scraper](#wirtschaftsnachrichten-scraper)
@@ -79,38 +79,26 @@ pip install -r requirements.txt
 ### Dimensionstabellen-ETL
 Zieht Stammdaten aus `database-steel` und lädt sie in Dimensionstabellen im DWH.
 ```bash
-python etl_dim_tables.py
+python etl_dimensions.py
 ```
 
 ### Fakten-ETL
 Importiert Produktions‑ und Verkaufsaufträge und schreibt sie in Faktentabellen.
 ```bash
-python etl_facts.py
-```
-
-### Auftrags- & Positions-Import
-Lädt Kundenaufträge aus CSV, importiert zugehörige Positionen und erzeugt Materialbestellungen.
-```bash
-python import_orders_and_positions.py
-```
-
-### Lagerbestand-Update
-Erzeugt heute-basierte Lagerbestandseinträge in `tb_Lagerbestand`.
-```bash
-python update_inventory.py
+python etl_fakts.py
 ```
 
 ### Strompreisanalyse
 Explorative Analyse historischer Spotmarktpreise.
 ```bash
-python energy_price_analysis.py
+python analysis.py
 ```
 
-### Modelltraining & -eval
+### Modelltraining und -eval
 Trainiert bzw. lädt das LSTM-Modell für Strompreisprognosen:
 ```bash
 # Training (falls kein Modell vorhanden)
-python train_model.py
+python build_model.py
 
 # Auswertung
 python evaluate_model.py
@@ -119,25 +107,28 @@ python evaluate_model.py
 ### Prognosespeicherung
 Berechnet die nächsten 24 Stunden Prognose und speichert sie im DWH.
 ```bash
-python forecast_energy_price.py
+python generate_forecast.py
 ```
 
 ### HRC-Stahlpreis-Fetcher
 Extrahiert aktuellen HRC‑Stahlpreis von TradingEconomics und speichert ihn.
 ```bash
-python fetch_hrc_price.py
+python scraping-steel-price.py
 ```
 
 ### Wirtschaftsnachrichten-Scraper
 Sammelt wirtschaftsrelevante Artikel (Tagesschau & Fachportale) und speichert sie mit Sentiment.
 ```bash
-python news_scraper.py
+python sentiment_analysis_news.py
 ```
 
 ## Projektstruktur
 ```text
 BI-STEEL-PROJECT/
-├── .venv/                          # Virtuelle Umgebung
+├── .venv/                         # Virtuelle Umgebung
+├── .env                           # Konfigurationsdaten für Datenbanken
+├── energy_prices/
+│   └── cronjob_write_power_prices.py 
 ├── etl_pipelines_to_dwh/          # ETL-Skripts zum Laden ins DWH
 │   ├── cronjob/                   # Cronjob-fähige Pipelines
 │   │   ├── etl_dimensions.py
@@ -173,12 +164,6 @@ BI-STEEL-PROJECT/
 ├── README.md
 └── requirements.txt
 ```
-
-> Die Skripte sind funktionsorientiert in Ordnern gruppiert:
-> - **etl_pipelines_to_dwh/**: Ladeprozesse für Dimensions- und Faktentabellen
-> - **generate_data/**: Generierung und Import historischer Testdaten
-> - **machine_learning/**: Analyse und Modellierung der Energiepreise
-> - **scraping/**: Live-Datenintegration (Marktpreise & RSS-Feeds)
 
 ### Datenquellen
 | Kategorie           | Beispiele                                                                 |
